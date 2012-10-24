@@ -92,10 +92,11 @@
                objects = [] :: [file:filename(), ...],
                opts = [] ::list() | []}).
 
-compile(Config, _AppFile) ->
-    case get_specs(Config) of
+compile(Config0, AppFile) ->
+    {Config, AppName} = rebar_app_utils:app_name(Config0, AppFile),
+    case get_specs(Config, AppName) of
         [] ->
-            ok;
+            {ok, Config};
         Specs ->
             SharedEnv = rebar_config:get_env(Config, ?MODULE),
 
@@ -127,11 +128,13 @@ compile(Config, _AppFile) ->
                               ?INFO("Skipping relink of ~s\n", [Target]),
                               ok
                       end
-              end, Specs)
+              end, Specs),
+            {ok, Config}
     end.
 
-clean(Config, _AppFile) ->
-    case get_specs(Config) of
+clean(Config0, AppFile) ->
+    {Config, AppName} = rebar_app_utils:app_name(Config0, AppFile),
+    case get_specs(Config, AppName) of
         [] ->
             ok;
         Specs ->
@@ -140,7 +143,7 @@ clean(Config, _AppFile) ->
                                   rebar_file_utils:delete_each(Objects)
                           end, Specs)
     end,
-    ok.
+    {ok, Config}.
 
 setup_env(Config) ->
     setup_env(Config, []).
@@ -242,11 +245,32 @@ needs_link(SoName, NewBins) ->
 %% == port_specs ==
 %%
 
-get_specs(Config) ->
-    PortSpecs = rebar_config:get_local(Config, port_specs, []),
+get_specs(Config, AppName) ->
+    PortSpecs = get_specs1(Config, AppName),
     Filtered = filter_port_specs(PortSpecs),
     OsType = os:type(),
     [get_port_spec(Config, OsType, Spec) || Spec <- Filtered].
+
+get_specs1(Config, AppName) ->
+    case rebar_config:get_local(Config, port_specs, []) of
+        [] ->
+            %% No port_specs found. See if we have C sources.
+            SrcDir = "c_src",
+            case rebar_utils:find_files(SrcDir, ".*\\.c$", false) of
+                [] ->
+                    %% Found neither C sources nor port_specs.
+                    %% Nothing to build.
+                    [];
+                _ ->
+                    %% Found C sources. Build priv/AppName.so with
+                    %% c_src/*.c as input.
+                    Sources = [filename:join(SrcDir, "*.c")],
+                    Target = filename:join("priv", ?FMT("~s.so", [AppName])),
+                    [{Target, Sources}]
+            end;
+        Specs ->
+            Specs
+    end.
 
 filter_port_specs(Specs) ->
     [S || S <- Specs, filter_port_spec(S)].
