@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(rebar_qc).
 
--export([qc/2, triq/2, eqc/2]).
+-export([qc/2, triq/2, eqc/2, proper/2]).
 
 -include("rebar.hrl").
 
@@ -50,12 +50,17 @@ eqc(Config, _AppFile) ->
     ok = load_qc_mod(eqc),
     run_qc(Config, qc_opts(Config), eqc).
 
+proper(Config, _AppFile) ->
+    ?CONSOLE("NOTICE: Using experimental 'proper' command~n", []),
+    ok = load_qc_mod(proper),
+    run_qc(Config, qc_opts(Config), proper).
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
 
 -define(TRIQ_MOD, triq).
 -define(EQC_MOD, eqc).
+-define(PROPER_MOD, proper).
 
 qc_opts(Config) ->
     rebar_config:get(Config, qc_opts, []).
@@ -92,7 +97,12 @@ detect_qc_mod() ->
                 {module, ?EQC_MOD} ->
                     ?EQC_MOD;
                 {error, nofile} ->
-                    ?ABORT("No QC library available~n", [])
+                    case code:ensure_loaded(?PROPER_MOD) of
+                        {module, ?PROPER_MOD} ->
+                            ?PROPER_MOD;
+                        {error, nofile} ->
+                            ?ABORT("No QC library available~n", [])
+                    end
             end
     end.
 
@@ -156,7 +166,8 @@ qc_module(QC=triq, _QCOpts, M) ->
         Failed ->
             [Failed]
     end;
-qc_module(QC=eqc, QCOpts, M) -> QC:module(QCOpts, M).
+qc_module(QC=eqc, QCOpts, M) -> QC:module(QCOpts, M);
+qc_module(QC=proper, QCOpts, M) -> QC:module(M, QCOpts).
 
 find_prop_mods() ->
     Beams = rebar_utils:find_files(?QC_DIR, ".*\\.beam\$"),
