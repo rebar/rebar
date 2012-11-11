@@ -92,8 +92,9 @@
                objects = [] :: [file:filename(), ...],
                opts = [] ::list() | []}).
 
-compile(Config, _AppFile) ->
-    case get_specs(Config) of
+compile(Config0, AppFile) ->
+    {Config, AppName} = rebar_app_utils:app_name(Config0, AppFile),
+    case get_specs(Config, AppName) of
         [] ->
             ok;
         Specs ->
@@ -104,14 +105,14 @@ compile(Config, _AppFile) ->
 
             %% Make sure that the target directories exist
             ?INFO("Using specs ~p\n", [Specs]),
-            lists:foreach(fun(#spec{target=Target}) ->
+            lists:foreach(fun(#spec{target = Target}) ->
                                   ok = filelib:ensure_dir(Target)
                           end, Specs),
 
             %% Only relink if necessary, given the Target
             %% and list of new binaries
             lists:foreach(
-              fun(#spec{target=Target, objects=Bins, opts=Opts}) ->
+              fun(#spec{target = Target, objects = Bins, opts = Opts}) ->
                       AllBins = [sets:from_list(Bins),
                                  sets:from_list(NewBins)],
                       Intersection = sets:intersection(AllBins),
@@ -124,14 +125,15 @@ compile(Config, _AppFile) ->
                                                    Target),
                               rebar_utils:sh(Cmd, [{env, Env}]);
                           false ->
-                              ?INFO("Skipping relink of ~s\n", [Target]),
-                              ok
+                              ?INFO("Skipping relink of ~s\n", [Target])
                       end
               end, Specs)
-    end.
+    end,
+    {ok, Config}.
 
-clean(Config, _AppFile) ->
-    case get_specs(Config) of
+clean(Config0, AppFile) ->
+    {Config, AppName} = rebar_app_utils:app_name(Config0, AppFile),
+    case get_specs(Config, AppName) of
         [] ->
             ok;
         Specs ->
@@ -140,7 +142,7 @@ clean(Config, _AppFile) ->
                                   rebar_file_utils:delete_each(Objects)
                           end, Specs)
     end,
-    ok.
+    {ok, Config}.
 
 setup_env(Config) ->
     setup_env(Config, []).
@@ -179,7 +181,7 @@ replace_extension(File, OldExt, NewExt) ->
 
 compile_sources(Config, Specs, SharedEnv) ->
     lists:foldl(
-      fun(#spec{sources=Sources, type=Type, opts=Opts}, NewBins) ->
+      fun(#spec{sources = Sources, type = Type, opts = Opts}, NewBins) ->
               Env = proplists:get_value(env, Opts, SharedEnv),
               compile_each(Config, Sources, Type, Env, NewBins)
       end, [], Specs).
@@ -225,13 +227,13 @@ needs_compile(Source, Bin) ->
     %% check for include changes
     filelib:last_modified(Bin) < filelib:last_modified(Source).
 
-needs_link(SoName, []) ->
-    filelib:last_modified(SoName) == 0;
-needs_link(SoName, NewBins) ->
+needs_link(Target, []) ->
+    filelib:last_modified(Target) == 0;
+needs_link(Target, NewBins) ->
     MaxLastMod = lists:max([filelib:last_modified(B) || B <- NewBins]),
-    case filelib:last_modified(SoName) of
+    case filelib:last_modified(Target) of
         0 ->
-            ?DEBUG("Last mod is 0 on ~s\n", [SoName]),
+            ?DEBUG("Last mod is 0 on ~s\n", [Target]),
             true;
         Other ->
             ?DEBUG("Checking ~p >= ~p\n", [MaxLastMod, Other]),
@@ -242,11 +244,32 @@ needs_link(SoName, NewBins) ->
 %% == port_specs ==
 %%
 
-get_specs(Config) ->
-    PortSpecs = rebar_config:get_local(Config, port_specs, []),
+get_specs(Config, AppName) ->
+    PortSpecs = get_specs1(Config, AppName),
     Filtered = filter_port_specs(PortSpecs),
     OsType = os:type(),
     [get_port_spec(Config, OsType, Spec) || Spec <- Filtered].
+
+get_specs1(Config, AppName) ->
+    case rebar_config:get_local(Config, port_specs, []) of
+        [] ->
+            %% No port_specs found. See if we have C sources.
+            SrcDir = "c_src",
+            case rebar_utils:find_files(SrcDir, ".*\\.c$", false) of
+                [] ->
+                    %% Found neither C sources nor port_specs.
+                    %% Nothing to build.
+                    [];
+                _ ->
+                    %% Found C sources. Build priv/AppName.so with
+                    %% c_src/*.c as input.
+                    Sources = [filename:join(SrcDir, "*.c")],
+                    Target = filename:join("priv", ?FMT("~s.so", [AppName])),
+                    [{Target, Sources}]
+            end;
+        Specs ->
+            Specs
+    end.
 
 filter_port_specs(Specs) ->
     [S || S <- Specs, filter_port_spec(S)].
@@ -265,11 +288,11 @@ get_port_spec(Config, OsType, {Arch, Target, Sources}) ->
 get_port_spec(Config, OsType, {_Arch, Target, Sources, Opts}) ->
     SourceFiles = port_sources(Sources),
     ObjectFiles = port_objects(SourceFiles),
-    #spec{type=target_type(Target),
-          target=maybe_switch_extension(OsType, Target),
-          sources=SourceFiles,
-          objects=ObjectFiles,
-          opts=port_opts(Config, Opts)}.
+    #spec{type = target_type(Target),
+          target = maybe_switch_extension(OsType, Target),
+          sources = SourceFiles,
+          objects = ObjectFiles,
+          opts = port_opts(Config, Opts)}.
 
 port_sources(Sources) ->
     lists:flatmap(fun filelib:wildcard/1, Sources).
