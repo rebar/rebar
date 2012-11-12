@@ -86,11 +86,11 @@
 %%                           "$CFLAGS -X86Options"}]}
 %%
 
--record(spec, {type::'drv' | 'exe',
-               target::file:filename(),
-               sources = [] :: [file:filename(), ...],
-               objects = [] :: [file:filename(), ...],
-               opts = [] ::list() | []}).
+-record(spec, {type :: 'drv' | 'exe',
+               target :: file:filename(),
+               sources :: [file:filename()],
+               objects :: [file:filename(), ...],
+               opts :: list()}).
 
 compile(Config, AppFile) ->
     case get_specs(Config, AppFile) of
@@ -248,6 +248,12 @@ needs_link(SoName, NewBins) ->
 %%
 
 get_specs(Config, AppFile) ->
+    [Spec || Spec <- get_specs1(Config, AppFile), sources_exist(Spec)].
+
+sources_exist(#spec{sources = []}) -> false;
+sources_exist(_) -> true.
+
+get_specs1(Config, AppFile) ->
     case rebar_config:get_local(Config, port_specs, []) of
         [] ->
             %% No spec provided. Construct a spec
