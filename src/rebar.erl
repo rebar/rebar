@@ -334,22 +334,19 @@ get_jobs(Config) ->
 %% options accepted via getopt
 %%
 option_spec_list() ->
-    Jobs = ?DEFAULT_JOBS,
-    JobsHelp = io_lib:format(
-                 "Number of concurrent workers a command may use. Default: ~B",
-                 [Jobs]),
-    VerboseHelp = "Verbosity level (-v, -vv, -vvv, --verbose 3). Default: 0",
     [
      %% {Name, ShortOpt, LongOpt, ArgSpec, HelpMsg}
-     {help,     $h, "help",     undefined, "Show the program options"},
-     {commands, $c, "commands", undefined, "Show available commands"},
-     {verbose,  $v, "verbose",  integer,   VerboseHelp},
-     {version,  $V, "version",  undefined, "Show version information"},
-     {force,    $f, "force",    undefined, "Force"},
-     {defines,  $D, undefined,  string,    "Define compiler macro"},
-     {jobs,     $j, "jobs",     integer,   JobsHelp},
-     {config,   $C, "config",   string,    "Rebar config file to use"},
-     {profile,  $p, "profile",  undefined, "Profile this run of rebar"},
+     {help,       $h, "help",       undefined, "Show the program options"},
+     {commands,   $c, "commands",   undefined, "Show available commands"},
+     {verbose,    $v, "verbose",    {integer, 0},
+      "Verbosity level (-v, -vv, -vvv, --verbose 3)"},
+     {version,    $V, "version",    undefined, "Show version information"},
+     {force,      $f, "force",      undefined, "Force"},
+     {defines,    $D, undefined,    string,    "Define compiler macro"},
+     {jobs,       $j, "jobs",       {integer, ?DEFAULT_JOBS},
+      "Number of concurrent workers a command may use"},
+     {config,     $C, "config",     string,    "Rebar config file to use"},
+     {profile,    $p, "profile",    undefined, "Profile this run of rebar"},
      {keep_going, $k, "keep-going", undefined,
       "Keep running after a command fails"}
     ].
