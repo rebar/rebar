@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(rebar_qc).
 
--export([qc/2, triq/2, eqc/2, clean/2]).
+-export([qc/2, clean/2]).
 
 %% for internal use only
 -export([info/2]).
@@ -34,6 +34,8 @@
 -include("rebar.hrl").
 
 -define(QC_DIR, ".qc").
+-define(TRIQ_MOD, triq).
+-define(EQC_MOD, eqc).
 
 %% ===================================================================
 %% Public API
@@ -41,17 +43,7 @@
 
 qc(Config, _AppFile) ->
     ?CONSOLE("NOTICE: Using experimental 'qc' command~n", []),
-    run_qc(Config, qc_opts(Config)).
-
-triq(Config, _AppFile) ->
-    ?CONSOLE("NOTICE: Using experimental 'triq' command~n", []),
-    ok = load_qc_mod(triq),
-    run_qc(Config, qc_opts(Config), triq).
-
-eqc(Config, _AppFile) ->
-    ?CONSOLE("NOTICE: Using experimental 'eqc' command~n", []),
-    ok = load_qc_mod(eqc),
-    run_qc(Config, qc_opts(Config), eqc).
+    run(Config).
 
 clean(_Config, _File) ->
     rebar_file_utils:rm_rf(?QC_DIR).
@@ -73,21 +65,58 @@ info(help, qc) ->
         {qc_first_files, []}
        ]).
 
--define(TRIQ_MOD, triq).
--define(EQC_MOD, eqc).
+run(Config) ->
+    ok = ensure_dirs(),
+    CodePath = setup_codepath(),
+
+    CompileOnly = rebar_utils:get_experimental_global(Config, compile_only,
+                                                      false),
+    %% Compile erlang code to ?QC_DIR, using a tweaked config
+    %% with appropriate defines, and include all the test modules
+    %% as well.
+    {ok, _SrcErls} = rebar_erlc_compiler:test_compile(Config, "qc", ?QC_DIR),
+
+    case CompileOnly of
+        "true" ->
+            true = code:set_path(CodePath),
+            ?CONSOLE("Compiled modules for qc~n", []);
+        false ->
+            RawQCOpts = qc_opts(Config),
+            ?DEBUG("qc_opts: ~p~n", [RawQCOpts]),
+            QCMod = select_qc_mod(RawQCOpts),
+            QCOpts = lists:filter(fun({qc_mod, _}) -> false;
+                                     (_) -> true
+                                  end, RawQCOpts),
+            ?DEBUG("Selected QC module: ~p~n", [QCMod]),
+            run1(QCMod, QCOpts, CodePath)
+    end.
+
+run1(QCMod, QCOpts, CodePath) ->
+    TestModule = fun(M) -> qc_module(QCMod, QCOpts, M) end,
+    case lists:flatmap(TestModule, find_prop_mods()) of
+        [] ->
+            true = code:set_path(CodePath),
+            ok;
+        Errors ->
+            ?ABORT("One or more QC properties didn't hold true:~n~p~n",
+                   [Errors])
+    end.
+
+ensure_dirs() ->
+    ok = filelib:ensure_dir(filename:join(qc_dir(), "dummy")),
+    ok = filelib:ensure_dir(filename:join(rebar_utils:ebin_dir(), "dummy")).
+
+setup_codepath() ->
+    CodePath = code:get_path(),
+    true = code:add_patha(qc_dir()),
+    true = code:add_pathz(rebar_utils:ebin_dir()),
+    CodePath.
+
+qc_dir() ->
+    filename:join(rebar_utils:get_cwd(), ?QC_DIR).
 
 qc_opts(Config) ->
     rebar_config:get(Config, qc_opts, []).
-
-run_qc(Config, QCOpts) ->
-    run_qc(Config, QCOpts, select_qc_mod(QCOpts)).
-
-run_qc(Config, RawQCOpts, QC) ->
-    ?DEBUG("Selected QC module: ~p~n", [QC]),
-    QCOpts = lists:filter(fun({qc_mod, _}) -> false;
-                             (_) -> true
-                          end, RawQCOpts),
-    run(Config, QC, QCOpts).
 
 select_qc_mod(QCOpts) ->
     case proplists:get_value(qc_mod, QCOpts) of
@@ -113,59 +142,6 @@ detect_qc_mod() ->
                 {error, nofile} ->
                     ?ABORT("No QC library available~n", [])
             end
-    end.
-
-load_qc_mod(Mod) ->
-    case code:ensure_loaded(Mod) of
-        {module, Mod} ->
-            ok;
-        {error, nofile} ->
-            ?ABORT("Failed to load QC lib '~p'~n", [Mod])
-    end.
-
-ensure_dirs() ->
-    ok = filelib:ensure_dir(filename:join(qc_dir(), "dummy")),
-    ok = filelib:ensure_dir(filename:join(rebar_utils:ebin_dir(), "dummy")).
-
-setup_codepath() ->
-    CodePath = code:get_path(),
-    true = code:add_patha(qc_dir()),
-    true = code:add_pathz(rebar_utils:ebin_dir()),
-    CodePath.
-
-qc_dir() ->
-    filename:join(rebar_utils:get_cwd(), ?QC_DIR).
-
-run(Config, QC, QCOpts) ->
-    ?DEBUG("qc_opts: ~p~n", [QCOpts]),
-
-    ok = ensure_dirs(),
-    CodePath = setup_codepath(),
-
-    CompileOnly = rebar_utils:get_experimental_global(Config, compile_only,
-                                                      false),
-    %% Compile erlang code to ?QC_DIR, using a tweaked config
-    %% with appropriate defines, and include all the test modules
-    %% as well.
-    {ok, _SrcErls} = rebar_erlc_compiler:test_compile(Config, "qc", ?QC_DIR),
-
-    case CompileOnly of
-        "true" ->
-            true = code:set_path(CodePath),
-            ?CONSOLE("Compiled modules for qc~n", []);
-        false ->
-            run1(QC, QCOpts, CodePath)
-    end.
-
-run1(QC, QCOpts, CodePath) ->
-    TestModule = fun(M) -> qc_module(QC, QCOpts, M) end,
-    case lists:flatmap(TestModule, find_prop_mods()) of
-        [] ->
-            true = code:set_path(CodePath),
-            ok;
-        Errors ->
-            ?ABORT("One or more QC properties didn't hold true:~n~p~n",
-                   [Errors])
     end.
 
 qc_module(QC=triq, _QCOpts, M) ->
