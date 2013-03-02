@@ -45,7 +45,7 @@ help(ParentConfig, Commands) ->
     %% get plugin modules
     Predirs = [],
     Dir = rebar_utils:get_cwd(),
-    SubdirAssoc = remember_cwd_subdir(Dir, Predirs),
+    SubdirAssoc = remember_cwd_predirs(Dir, Predirs),
     Config = maybe_load_local_config(Dir, ParentConfig),
     {ok, PluginModules} = plugin_modules(Config, SubdirAssoc),
 
