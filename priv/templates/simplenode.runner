@@ -75,7 +75,7 @@ else
 fi
 
 # Extract the target node name from node.args
-NAME_ARG=`egrep '^\-s?name' $VMARGS_PATH`
+NAME_ARG=`egrep '^-s?name' $VMARGS_PATH`
 if [ -z "$NAME_ARG" ]; then
     echo "vm.args needs to have either -name or -sname parameter."
     exit 1
@@ -91,7 +91,7 @@ REMSH_NAME_ARG="$REMSH_TYPE remsh`date +%s`@`echo $REMSH_NAME | awk -F@ '{print 
 REMSH_REMSH_ARG="-remsh $REMSH_NAME"
 
 # Extract the target cookie
-COOKIE_ARG=`grep '^\-setcookie' $VMARGS_PATH`
+COOKIE_ARG=`grep '^-setcookie' $VMARGS_PATH`
 if [ -z "$COOKIE_ARG" ]; then
     echo "vm.args needs to have a -setcookie parameter."
     exit 1
