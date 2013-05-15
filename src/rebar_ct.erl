@@ -108,7 +108,22 @@ run_test(TestDir, LogDir, Config, _File) ->
                      " 2>&1 | tee -a " ++ RawLog
              end,
 
-    rebar_utils:sh(Cmd ++ Output, [{env,[{"TESTDIR", TestDir}]}]),
+    %% In R15B01 and earlier, ct_run returns exit status 0 if it could
+    %% execute the tests, even if some of them failed.  In R15B02 and
+    %% later, ct_run returns exit status 1 if the tests could be
+    %% executed, but some of them failed or were auto-skipped.  Let's
+    %% ignore status 1 here.  (Earlier ct_run versions return exit
+    %% status 1 for various fatal errors, but it seems like check_log
+    %% catches those cases.)
+    case rebar_utils:sh(Cmd ++ Output, [{env,[{"TESTDIR", TestDir}]},
+                                        return_on_error]) of
+        {ok, _} -> ok;
+        {error, {1, _}} -> ok;
+        {error, {Rc, CmdOutput}} ->
+            ?ABORT("~s failed with error: ~w and output:~n~s~n",
+                   [Cmd ++ Output, Rc, CmdOutput])
+    end,
+
     check_log(Config, RawLog).
 
 clear_log(LogDir, RawLog) ->
