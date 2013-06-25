@@ -146,7 +146,8 @@ init_config({Options, _NonOptArgs}) ->
     %% Keep track of how many operations we do, so we can detect bad commands
     BaseConfig1 = rebar_config:set_xconf(BaseConfig, operations, 0),
     %% Initialize vsn cache
-    rebar_config:set_xconf(BaseConfig1, vsn_cache, dict:new()).
+    BaseConfig2 = rebar_config:set_xconf(BaseConfig1, vsn_cache, dict:new()),
+    rebar_config:set_xconf(BaseConfig2, force_deps, ordsets:new()).
 
 init_config1(BaseConfig) ->
     %% Determine the location of the rebar executable; important for pulling

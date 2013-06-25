@@ -97,10 +97,15 @@ app_applications(Config, AppFile) ->
 
 app_vsn(Config, AppFile) ->
     case load_app_file(Config, AppFile) of
-        {ok, Config1, _, AppInfo} ->
+        {ok, Config1, _AppName, AppInfo} ->
             AppDir = filename:dirname(filename:dirname(AppFile)),
-            rebar_utils:vcs_vsn(Config1, get_value(vsn, AppInfo, AppFile),
-                                AppDir);
+            Vsn = get_value(vsn, AppInfo, AppFile),
+            case is_atom(Vsn) of
+                true ->
+                    rebar_utils:vcs_vsn(Config1, Vsn, AppDir);
+                false ->
+                    {Config1, Vsn}
+            end;
         {error, Reason} ->
             ?ABORT("Failed to extract vsn from ~s: ~p\n",
                    [AppFile, Reason])

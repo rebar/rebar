@@ -172,8 +172,37 @@ skip_or_process_dir1(AppFile, ModuleSet, Config, CurrentCodePath,
                          CurrentCodePath, ModuleSet)
     end.
 
-process_dir1(Dir, Command, DirSet, Config0, CurrentCodePath,
+process_dir1(Dir, Command, DirSet, Config, CurrentCodePath,
              {DirModules, ModuleSetFile}) ->
+    {Config1, Modules, PluginModules, AllPredirs} =
+        process_dir_prepare(Config, Dir, DirModules, ModuleSetFile),
+
+    ?DEBUG("Predirs: ~p\n", [AllPredirs]),
+    {Config2, DirSet1} = process_each(AllPredirs, Command, Config1,
+                                      ModuleSetFile, DirSet),
+    Config3 = process_current_dir(Command,
+                                  Config2,
+                                  Modules,
+                                  PluginModules,
+                                  ModuleSetFile,
+                                  Dir,
+                                  rebar_config:is_skip_dir(Config2, Dir)),
+
+    %% Mark the current directory as processed
+    DirSet2 = sets:add_element(Dir, DirSet1),
+
+    Res = post_process_dir(Command,
+                           Config3,
+                           DirSet2,
+                           Modules ++ PluginModules,
+                           ModuleSetFile),
+
+    process_dir_cleanup(Dir, CurrentCodePath),
+
+    %% Return the updated {config, dirset} as result
+    Res.
+
+process_dir_prepare(Config, Dir, DirModules, ModuleSetFile) ->
     %% Get the list of modules for "any dir". This is a catch-all list
     %% of modules that are processed in addition to modules associated
     %% with this directory type. These any_dir modules are processed
@@ -184,7 +213,7 @@ process_dir1(Dir, Command, DirSet, Config0, CurrentCodePath,
 
     %% Invoke 'preprocess' on the modules -- this yields a list of other
     %% directories that should be processed _before_ the current one.
-    {Config1, Predirs} = acc_modules(Modules, preprocess, Config0,
+    {Config1, Predirs} = acc_modules(Modules, preprocess, Config,
                                      ModuleSetFile),
 
     %% Remember associated pre-dirs (used for plugin lookup)
@@ -197,62 +226,54 @@ process_dir1(Dir, Command, DirSet, Config0, CurrentCodePath,
     {Config2, PluginPredirs} = acc_modules(PluginModules, preprocess,
                                            Config1, ModuleSetFile),
 
-    AllPredirs = Predirs ++ PluginPredirs,
+    {Config2, Modules, PluginModules, Predirs ++ PluginPredirs}.
 
-    ?DEBUG("Predirs: ~p\n", [AllPredirs]),
-    {Config3, DirSet2} = process_each(AllPredirs, Command, Config2,
-                                      ModuleSetFile, DirSet),
-
+-type module_set_file() :: 'undefined' | file:filename().
+-spec process_current_dir(atom(), rebar_config:config(), [module()], [module()],
+                          module_set_file(), file:filename(), boolean()) ->
+                                 rebar_config:config().
+process_current_dir(Command, Config, _, _, _, Dir, true) ->
+    %% Do not execute the command on the directory, as some
+    %% module has requested a skip on it.
+    ?INFO("Skipping ~s in ~s\n", [Command, Dir]),
+    Config;
+process_current_dir(Command, Config, Modules, PluginModules,
+                    ModuleSetFile, Dir, false) ->
     %% Make sure the CWD is reset properly; processing the dirs may have
     %% caused it to change
     ok = file:set_cwd(Dir),
 
-    %% Check that this directory is not on the skip list
-    Config7 = case rebar_config:is_skip_dir(Config3, Dir) of
-                  true ->
-                      %% Do not execute the command on the directory, as some
-                      %% module has requested a skip on it.
-                      ?INFO("Skipping ~s in ~s\n", [Command, Dir]),
-                      Config3;
+    %% Check for and get command specific environments
+    {Config2, Env} = setup_envs(Config, Modules),
 
-                  false ->
-                      %% Check for and get command specific environments
-                      {Config4, Env} = setup_envs(Config3, Modules),
+    %% Execute any before_command plugins on this directory
+    Config3 = execute_pre(Command, PluginModules,
+                          Config2, ModuleSetFile, Env),
 
-                      %% Execute any before_command plugins on this directory
-                      Config5 = execute_pre(Command, PluginModules,
-                                            Config4, ModuleSetFile, Env),
+    %% Execute the current command on this directory
+    Config4 = execute(Command, Modules ++ PluginModules,
+                      Config3, ModuleSetFile, Env),
 
-                      %% Execute the current command on this directory
-                      Config6 = execute(Command, Modules ++ PluginModules,
-                                        Config5, ModuleSetFile, Env),
+    %% Execute any after_command plugins on this directory
+    execute_post(Command, PluginModules,
+                 Config4, ModuleSetFile, Env).
 
-                      %% Execute any after_command plugins on this directory
-                      execute_post(Command, PluginModules,
-                                   Config6, ModuleSetFile, Env)
-              end,
-
-    %% Mark the current directory as processed
-    DirSet3 = sets:add_element(Dir, DirSet2),
-
+post_process_dir(Command, Config, DirSet, Modules, ModuleSetFile) ->
     %% Invoke 'postprocess' on the modules. This yields a list of other
     %% directories that should be processed _after_ the current one.
-    {Config8, Postdirs} = acc_modules(Modules ++ PluginModules, postprocess,
-                                      Config7, ModuleSetFile),
+    {Config1, Postdirs} =
+        acc_modules(Modules, postprocess, Config, ModuleSetFile),
     ?DEBUG("Postdirs: ~p\n", [Postdirs]),
-    Res = process_each(Postdirs, Command, Config8,
-                       ModuleSetFile, DirSet3),
+    process_each(Postdirs, Command, Config1, ModuleSetFile, DirSet).
 
+process_dir_cleanup(Dir, CodePath) ->
     %% Make sure the CWD is reset properly; processing the dirs may have
     %% caused it to change
     ok = file:set_cwd(Dir),
 
     %% Once we're all done processing, reset the code path to whatever
     %% the parent initialized it to
-    restore_code_path(CurrentCodePath),
-
-    %% Return the updated {config, dirset} as result
-    Res.
+    restore_code_path(CodePath).
 
 remember_cwd_predirs(Cwd, Predirs) ->
     Store = fun(Dir, Dict) ->
