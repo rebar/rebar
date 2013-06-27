@@ -68,37 +68,15 @@ preprocess(Config, _) ->
     %% Add available deps to code path
     Config3 = update_deps_code_path(Config2, AvailableDeps),
 
-    %% If skip_deps=true, mark each dep dir as a skip_dir w/ the core so that
-    %% the current command doesn't run on the dep dir. However, pre/postprocess
-    %% WILL run (and we want it to) for transitivity purposes.
-    %%
-    %% Also, if skip_deps=comma,separated,app,list, then only the given
-    %% dependencies are skipped.
-    NewConfig = case rebar_config:get_global(Config3, skip_deps, false) of
-        "true" ->
-            lists:foldl(
-                fun(#dep{dir = Dir}, C) ->
-                        rebar_config:set_skip_dir(C, Dir)
-                end, Config3, AvailableDeps);
-        Apps when is_list(Apps) ->
-            SkipApps = [list_to_atom(App) || App <- string:tokens(Apps, ",")],
-            lists:foldl(
-                fun(#dep{dir = Dir, app = App}, C) ->
-                        case lists:member(App, SkipApps) of
-                            true -> rebar_config:set_skip_dir(C, Dir);
-                            false -> C
-                        end
-                end, Config3, AvailableDeps);
-        _ ->
-            Config3
-    end,
+    %% Handle skip_deps=
+    Config4 = maybe_skip_deps(Config3, AvailableDeps),
 
-    %% Filtering out 'raw' dependencies so that no commands other than
+    %% Filter out 'raw' dependencies so that no commands other than
     %% deps-related can be executed on their directories.
     NonRawAvailableDeps = [D || D <- AvailableDeps, not D#dep.is_raw],
 
     %% Return all the available dep directories for process
-    {ok, NewConfig, dep_dirs(NonRawAvailableDeps)}.
+    {ok, Config4, dep_dirs(NonRawAvailableDeps)}.
 
 postprocess(Config, _) ->
     case rebar_config:get_xconf(Config, ?MODULE, undefined) of
@@ -293,6 +271,32 @@ update_deps_code_path(Config, [Dep | Rest]) ->
         end,
     update_deps_code_path(Config2, Rest).
 
+%% If skip_deps=true, mark each dep dir as a skip_dir w/ the core so that
+%% the current command doesn't run on the dep dir. However, pre/postprocess
+%% WILL run (and we want it to) for transitivity purposes.
+%%
+%% Also, if skip_deps=comma,separated,app,list, then only the given
+%% dependencies are skipped.
+maybe_skip_deps(Config, AvailableDeps) ->
+    case rebar_config:get_global(Config, skip_deps, false) of
+        "true" ->
+            lists:foldl(
+              fun(#dep{dir = Dir}, C) ->
+                      rebar_config:set_skip_dir(C, Dir)
+              end, Config, AvailableDeps);
+        Apps when is_list(Apps) ->
+            SkipApps = [list_to_atom(App) || App <- string:tokens(Apps, ",")],
+            lists:foldl(
+              fun(#dep{dir = Dir, app = App}, C) ->
+                      case lists:member(App, SkipApps) of
+                          true -> rebar_config:set_skip_dir(C, Dir);
+                          false -> C
+                      end
+              end, Config, AvailableDeps);
+        _ ->
+            Config
+    end.
+
 find_deps(Config, find=Mode, Deps) ->
     find_deps(Config, Mode, Deps, {[], []});
 find_deps(Config, read=Mode, Deps) ->
@@ -308,7 +312,8 @@ find_deps(Config, Mode, [{App, VsnRegex} | Rest], Acc) when is_atom(App) ->
     find_deps(Config, Mode, [{App, VsnRegex, undefined} | Rest], Acc);
 find_deps(Config, Mode, [{App, VsnRegex, Source} | Rest], Acc) ->
     find_deps(Config, Mode, [{App, VsnRegex, Source, []} | Rest], Acc);
-find_deps(Config, Mode, [{App, VsnRegex, Source, Opts} | Rest], Acc) when is_list(Opts) ->
+find_deps(Config, Mode, [{App, VsnRegex, Source, Opts} | Rest], Acc)
+  when is_list(Opts) ->
     Dep = #dep { app = App,
                  vsn_regex = VsnRegex,
                  source = Source,
@@ -383,36 +388,15 @@ is_app_available(Config, App, VsnRegex, Path, _IsRaw = false) ->
     ?DEBUG("is_app_available, looking for App ~p with Path ~p~n", [App, Path]),
     case rebar_app_utils:is_app_dir(Path) of
         {true, AppFile} ->
-            case rebar_app_utils:app_name(Config, AppFile) of
-                {Config1, App} ->
-                    {Config2, Vsn} = rebar_app_utils:app_vsn(Config1, AppFile),
-                    ?INFO("Looking for ~s-~s ; found ~s-~s at ~s\n",
-                          [App, VsnRegex, App, Vsn, Path]),
-                    case re:run(Vsn, VsnRegex, [{capture, none}]) of
-                        match ->
-                            {Config2, {true, Path}};
-                        nomatch ->
-                            ?WARN("~s has version ~p; requested regex was ~s\n",
-                                  [AppFile, Vsn, VsnRegex]),
-                            {Config2,
-                             {false, {version_mismatch,
-                                      {AppFile,
-                                       {expected, VsnRegex}, {has, Vsn}}}}}
-                    end;
-                {Config1, OtherApp} ->
-                    ?WARN("~s has application id ~p; expected ~p\n",
-                          [AppFile, OtherApp, App]),
-                    {Config1,
-                     {false, {name_mismatch,
-                              {AppFile, {expected, App}, {has, OtherApp}}}}}
-            end;
+            check_app_info(Config, App, VsnRegex, Path, AppFile);
         false ->
             ?WARN("Expected ~s to be an app dir (containing ebin/*.app), "
                   "but no .app found.\n", [Path]),
             {Config, {false, {missing_app_file, Path}}}
     end;
 is_app_available(Config, App, _VsnRegex, Path, _IsRaw = true) ->
-    ?DEBUG("is_app_available, looking for Raw Depencency ~p with Path ~p~n", [App, Path]),
+    ?DEBUG("is_app_available, looking for Raw Depencency ~p with Path ~p~n",
+           [App, Path]),
     case filelib:is_dir(Path) of
         true ->
             %% TODO: look for version string in <Path>/VERSION file? Not clear
@@ -423,6 +407,34 @@ is_app_available(Config, App, _VsnRegex, Path, _IsRaw = true) ->
             ?WARN("Expected ~s to be a raw dependency directory, "
                   "but no directory found.\n", [Path]),
             {Config, {false, {missing_raw_dependency_directory, Path}}}
+    end.
+
+check_app_info(Config, App, VsnRegex, Path, AppFile) ->
+    case rebar_app_utils:app_name(Config, AppFile) of
+        {Config1, App} ->
+            check_app_vsn(Config1, App, VsnRegex, Path, AppFile);
+        {Config1, OtherApp} ->
+            ?WARN("~s has application id ~p; expected ~p\n",
+                  [AppFile, OtherApp, App]),
+            {Config1,
+             {false, {name_mismatch,
+                      {AppFile, {expected, App}, {has, OtherApp}}}}}
+    end.
+
+check_app_vsn(Config, App, VsnRegex, Path, AppFile) ->
+    {Config1, Vsn} = rebar_app_utils:app_vsn(Config, AppFile),
+    ?INFO("Looking for ~s-~s ; found ~s-~s at ~s\n",
+          [App, VsnRegex, App, Vsn, Path]),
+    case re:run(Vsn, VsnRegex, [{capture, none}]) of
+        match ->
+            {Config1, {true, Path}};
+        nomatch ->
+            ?WARN("~s has version ~p; requested regex was ~s\n",
+                  [AppFile, Vsn, VsnRegex]),
+            {Config1,
+             {false, {version_mismatch,
+                      {AppFile,
+                       {expected, VsnRegex}, {has, Vsn}}}}}
     end.
 
 use_source(Config, Dep) ->
