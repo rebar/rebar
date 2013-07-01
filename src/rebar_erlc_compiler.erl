@@ -326,7 +326,7 @@ init_graph(Config, Erls) ->
       fun(Erl) ->
               update_graph(G, Erl, include_path(Erl, Config))
       end, Erls),
-    store_graph(G, "ebin", KeepGraph),
+    ok = store_graph(G, "ebin", KeepGraph),
     G.
 
 update_graph(G, Source, IncludePath) ->
