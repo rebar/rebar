@@ -43,6 +43,7 @@
          expand_code_path/0,
          expand_env_variable/3,
          vcs_vsn/3,
+         vcs_vsn_delete/3,
          deprecated/3, deprecated/4,
          get_deprecated_global/4, get_deprecated_global/5,
          get_experimental_global/3, get_experimental_local/3,
@@ -212,6 +213,12 @@ vcs_vsn(Config, Vcs, Dir) ->
         {ok, VsnString} ->
             {Config, VsnString}
     end.
+
+vcs_vsn_delete(Config, Vcs, Dir) ->
+    Key = {Vcs, Dir},
+    Cache = rebar_config:get_xconf(Config, vsn_cache),
+    Cache1 = dict:erase(Key, Cache),
+    rebar_config:set_xconf(Config, vsn_cache, Cache1).
 
 get_deprecated_global(Config, OldOpt, NewOpt, When) ->
     get_deprecated_global(Config, OldOpt, NewOpt, undefined, When).

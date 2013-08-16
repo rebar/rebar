@@ -32,6 +32,7 @@
          app_name/2,
          app_applications/2,
          app_vsn/2,
+         app_vsn_reset/2,
          is_skipped_app/2]).
 
 -export([load_app_file/2]). % TEMPORARY
@@ -106,6 +107,18 @@ app_vsn(Config, AppFile) ->
                    [AppFile, Reason])
     end.
 
+app_vsn_reset(Config, AppFile) ->
+    case reload_app_file(Config, AppFile) of
+        {ok, Config1, _, AppInfo} ->
+            AppDir = filename:dirname(filename:dirname(AppFile)),
+            rebar_utils:vcs_vsn_delete(Config1,
+                get_value(vsn, AppInfo, AppFile), AppDir);
+        {error, Reason} ->
+            ?ABORT("Failed to extract vsn from ~s: ~p\n",
+                   [AppFile, Reason]),
+            Config
+    end.
+
 is_skipped_app(Config, AppFile) ->
     {Config1, ThisApp} = app_name(Config, AppFile),
     %% Check for apps global parameter; this is a comma-delimited list
@@ -133,6 +146,11 @@ is_skipped_app(Config, AppFile) ->
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
+
+reload_app_file(Config, Filename) ->
+    AppFile = {app_file, Filename},
+    erlang:put(AppFile, undefined),
+    load_app_file(Config, Filename).
 
 load_app_file(Config, Filename) ->
     AppFile = {app_file, Filename},

@@ -145,6 +145,21 @@
 
 %% == Dependencies ==
 
+%% Where to put shared dependencies. By default it is not used.  Shared
+%% dependencies contain versioned directories and result in symlinks from the
+%% deps_dir to the shared_deps_dir.  This allows you to share deps between
+%% several projects.
+%%
+%% If environment variable REBAR_COPY_FROM_SHARED_DEPS_DIR is set, rebar copies
+%% instead of symlinking.
+%%
+%% Note that if you are using same application from different repositories,
+%% you will end up using an unexpected repository. For example, project
+%% A depends on {lager, "", {git, "basho/lager", {rev, "maint"}}},
+%% B depends on {lager, "", {git, "spilgames/lager", {rev, "maint"}}},
+%% rebar will think these repositories are identical and either A or B will win.
+{shared_deps_dir, "../deps"}.
+
 %% Where to put any downloaded dependencies. Default is "deps"
 {deps_dir, "deps"}.
 
