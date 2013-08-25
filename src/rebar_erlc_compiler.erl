@@ -321,14 +321,13 @@ needs_compile(Source, Target, Hrls) ->
               [Source] ++ Hrls).
 
 init_rebarinfo(Config, Erls) ->
-    KeepGraph = rebar_config:get_list(Config, keep_build_info, false),
     BaseDir = rebar_utils:base_dir(Config),
-    G = restore_rebarinfo(BaseDir, KeepGraph),
+    G = restore_rebarinfo(BaseDir),
     lists:foreach(
       fun(Erl) ->
               update_rebarinfo(G, Erl, include_path(Erl, Config))
       end, Erls),
-    ok = store_rebarinfo(G, BaseDir, KeepGraph),
+    ok = store_rebarinfo(G, BaseDir),
     G.
 
 update_rebarinfo(G, Source, IncludePath) ->
@@ -366,9 +365,7 @@ modify_rebarinfo(G, Source, IncludePath) ->
             ok
     end.
 
-restore_rebarinfo(_OutDir, _KeepGraph = false) ->
-    digraph:new();
-restore_rebarinfo(OutDir, _KeepGraph = true) ->
+restore_rebarinfo(OutDir) ->
     File = filename:join(OutDir, ?REBAR_INFO),
     G = digraph:new(),
     case file:read_file(File) of
@@ -391,9 +388,7 @@ restore_rebarinfo(OutDir, _KeepGraph = true) ->
     end,
     G.
 
-store_rebarinfo(_G, _OutDir, _KeepGraph = false) ->
-    ok;
-store_rebarinfo(G, OutDir, _KeepGraph = true) ->
+store_rebarinfo(G, OutDir) ->
     Vs = lists:map(
            fun(V) ->
                    digraph:vertex(G, V)
