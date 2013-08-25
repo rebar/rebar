@@ -114,8 +114,7 @@ clean(Config, _AppFile) ->
         || F <- YrlFiles ]),
 
     %% Delete rebar info file, if any
-    BaseDir = rebar_utils:base_dir(Config),
-    rebar_file_utils:rm_rf(filename:join(BaseDir, ?REBAR_INFO_FILE)),
+    rebar_file_utils:rm_rf(info_file(Config)),
 
     %% Erlang compilation is recursive, so it's possible that we have a nested
     %% directory structure in ebin with .beam files within. As such, we want
@@ -339,14 +338,16 @@ check_rebarinfo(_) ->
        "~s file version is incompatible. Please delete before next run.~n",
        [?REBAR_INFO_FILE]).
 
+info_file(Config) ->
+    filename:join(rebar_utils:base_dir(Config), ?REBAR_INFO_FILE).
+
 init_rebarinfo(Config, Erls) ->
-    BaseDir = rebar_utils:base_dir(Config),
-    G = restore_rebarinfo(BaseDir),
+    G = restore_rebarinfo(Config),
     lists:foreach(
       fun(Erl) ->
               update_rebarinfo(G, Erl, include_path(Erl, Config))
       end, Erls),
-    ok = store_rebarinfo(G, BaseDir),
+    ok = store_rebarinfo(G, Config),
     G.
 
 update_rebarinfo(G, Source, IncludePath) ->
@@ -384,10 +385,9 @@ modify_rebarinfo(G, Source, IncludePath) ->
             ok
     end.
 
-restore_rebarinfo(OutDir) ->
-    File = filename:join(OutDir, ?REBAR_INFO_FILE),
+restore_rebarinfo(Config) ->
     G = digraph:new(),
-    case file:read_file(File) of
+    case file:read_file(info_file(Config)) of
         {ok, Data} ->
             restore_rebarinfo(G, Data);
         _Err ->
@@ -413,7 +413,7 @@ restore_rebarinfo(G, Data) ->
               end, Es)
     end.
 
-store_rebarinfo(G, OutDir) ->
+store_rebarinfo(G, Config) ->
     Vs = lists:map(
            fun(V) ->
                    digraph:vertex(G, V)
@@ -426,7 +426,7 @@ store_rebarinfo(G, OutDir) ->
                              {V1, V2}
                      end, digraph:out_edges(G, V))
            end, Vs),
-    File = filename:join(OutDir, ?REBAR_INFO_FILE),
+    File = info_file(Config),
     Info = term_to_binary(#rebarinfo{erlc_info={Vs, Es}}),
     file:write_file(File, Info).
 
