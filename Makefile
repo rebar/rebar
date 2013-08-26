@@ -1,4 +1,4 @@
-.PHONY: clean dialyzer_warnings xref_warnings deps test
+.PHONY: clean dialyzer_warnings xref_warnings deps test .rebarinfo
 
 REBAR=$(PWD)/rebar
 RETEST=$(PWD)/deps/retest/retest
@@ -12,6 +12,7 @@ clean:
 distclean: clean
 	@rm -f dialyzer_warnings
 	@rm -rf deps
+	@rm -f .rebarinfo
 
 debug:
 	@./bootstrap debug
