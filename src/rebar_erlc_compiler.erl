@@ -389,7 +389,15 @@ restore_rebarinfo(Config) ->
     G = digraph:new(),
     case file:read_file(info_file(Config)) of
         {ok, Data} ->
-            restore_rebarinfo(G, Data);
+            case catch zlib:uncompress(Data) of
+                {'EXIT', {data_error, _}} ->
+                    ?ERROR(
+                       "Failed (zlib:uncompress) to restore rebar info file."
+                       " Discard file.~n", []),
+                    ok;
+                Decompressed ->
+                    restore_rebarinfo(G, Decompressed)
+            end;
         _Err ->
             ok
     end,
@@ -398,7 +406,8 @@ restore_rebarinfo(Config) ->
 restore_rebarinfo(G, Data) ->
     case catch binary_to_term(Data) of
         {'EXIT', _} ->
-            ?ERROR("Failed to restore rebar info file~n", []),
+            ?ERROR("Failed (binary_to_term) to restore rebar info file."
+                   " Discard file.~n", []),
             ok;
         Info ->
             ok = check_rebarinfo(Info),
@@ -427,7 +436,7 @@ store_rebarinfo(G, Config) ->
                      end, digraph:out_edges(G, V))
            end, Vs),
     File = info_file(Config),
-    Info = term_to_binary(#rebarinfo{erlc_info={Vs, Es}}),
+    Info = zlib:compress(term_to_binary(#rebarinfo{erlc_info={Vs, Es}})),
     file:write_file(File, Info).
 
 -spec expand_file_names([file:filename()],
