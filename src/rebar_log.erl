@@ -28,7 +28,7 @@
 
 -export([init/1,
          set_level/1, default_level/0,
-         log/3]).
+         log/3, console/2]).
 
 %% ===================================================================
 %% Public API
@@ -48,18 +48,29 @@ set_level(Level) ->
 
 log(Level, Str, Args) ->
     {ok, LogLevel} = application:get_env(rebar, log_level),
+    {M, F} = get_env(rebar, log_function, {io, format}),
     case should_log(LogLevel, Level) of
         true ->
-            io:format(log_prefix(Level) ++ Str, Args);
+            apply(M, F, [log_prefix(Level) ++ Str, Args]);
         false ->
             ok
     end.
 
 default_level() -> error_level().
 
+console(Fmt, Args) ->
+    {M, F} = get_env(rebar, console_log_function, {io, format}),
+    apply(M, F, [Fmt, Args]).
+
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
+
+get_env(Application, Par, Def) ->
+    case application:get_env(Application, Par) of
+        undefined -> Def;
+        {ok, Value} -> Value
+    end.
 
 valid_level(Level) ->
     erlang:max(error_level(), erlang:min(Level, debug_level())).
