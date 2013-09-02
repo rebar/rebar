@@ -235,7 +235,7 @@ maybe_report(_) ->
     ok.
 
 report(Messages) ->
-    lists:foreach(fun(Msg) -> io:format("~s", [Msg]) end, Messages).
+    lists:foreach(fun(Msg) -> ?CONSOLE("~s", [Msg]) end, Messages).
 
 format_errors(Config, _MainSource, Extra, Errors) ->
     [begin
