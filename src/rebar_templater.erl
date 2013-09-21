@@ -94,11 +94,9 @@ resolve_variables([_Pair | Rest], Dict) ->
 %% Render a binary to a string, using mustache and the specified context
 %%
 render(Bin, Context) ->
-    %% Be sure to escape any double-quotes before rendering...
     ReOpts = [global, {return, list}],
-    Str0 = re:replace(Bin, "\\\\", "\\\\\\", ReOpts),
-    Str1 = re:replace(Str0, "\"", "\\\\\"", ReOpts),
-    mustache:render(Str1, Context).
+    Str = re:replace(Bin, "\\\\", "\\\\\\", ReOpts),
+    mustache:render(Str, dict:to_list(Context)).
 
 %% ===================================================================
 %% Internal functions

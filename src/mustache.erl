@@ -68,55 +68,64 @@ render(Body, Ctx) when is_list(Body) ->
   TFun = compile(Body),
   render(undefined, TFun, Ctx);
 render(Mod, File) when is_list(File) ->
-  render(Mod, File, dict:new());
+  render(Mod, File, []);
 render(Mod, CompiledTemplate) ->
-  render(Mod, CompiledTemplate, dict:new()).
+  render(Mod, CompiledTemplate, []).
 
 render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
   render(Mod, CompiledTemplate, Ctx);
-render(Mod, CompiledTemplate, Ctx) ->
-  Ctx2 = dict:store('__mod__', Mod, Ctx),
-  lists:flatten(CompiledTemplate(Ctx2)).
+render(Mod, CompiledTemplate, CtxData) ->
+  Ctx0 = mustache_ctx:new(CtxData),
+  Ctx1 = mustache_ctx:module(Mod, Ctx0),
+  lists:flatten(CompiledTemplate(Ctx1)).
 
 pre_compile(T, State) ->
-  SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
+  SectionRE = "{{(#|\\^)([^}]*)}}\\s*(.+?){{/\\2}}\\s*",
   {ok, CompiledSectionRE} = re:compile(SectionRE, [dotall]),
-  TagRE = "\{\{(#|=|!|<|>|\{)?(.+?)\\1?\}\}+",
+  TagRE = "{{(#|=|!|<|>|{|&)?(.+?)\\1?}}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
-    "CFun = fun(A, B) -> A end, " ++
     compiler(T, State2) ++ " end.".
 
 compiler(T, State) ->
   Res = re:run(T, State#mstate.section_re),
   case Res of
-    {match, [{M0, M1}, {N0, N1}, {C0, C1}]} ->
+    {match, [{M0, M1}, {K0, K1}, {N0, N1}, {C0, C1}]} ->
       Front = string:substr(T, 1, M0),
       Back = string:substr(T, M0 + M1 + 1),
+      Kind = string:substr(T, K0 + 1, K1),
       Name = string:substr(T, N0 + 1, N1),
       Content = string:substr(T, C0 + 1, C1),
       "[" ++ compile_tags(Front, State) ++
-        " | [" ++ compile_section(Name, Content, State) ++
+        " | [" ++ compile_section(Kind, Name, Content, State) ++
         " | [" ++ compiler(Back, State) ++ "]]]";
     nomatch ->
       compile_tags(T, State)
   end.
 
-compile_section(Name, Content, State) ->
+compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
     "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
-      "\"true\" -> " ++
-        Result ++ "; " ++
-      "\"false\" -> " ++
-        "[]; " ++
+      "\"true\" -> " ++ Result ++ "; " ++
+      "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(mustache_ctx:merge(SubCtx, Ctx)) || SubCtx <- List]; " ++
       "Else -> " ++
         "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
+    "end " ++
+  "end()";
+compile_section("^", Name, Content, State) ->
+  Mod = State#mstate.mod,
+  Result = compiler(Content, State),
+  "fun() -> " ++
+    "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+      "\"false\" -> " ++ Result ++ "; " ++
+      "[] -> " ++ Result ++ "; " ++
+      "_ -> [] "
     "end " ++
   "end()".
 
@@ -129,11 +138,11 @@ compile_tags(T, State) ->
       Content = string:substr(T, C0 + 1, C1),
       Kind = tag_kind(T, K),
       Result = compile_tag(Kind, Content, State),
-      "[\"" ++ Front ++
+      "[\"" ++ escape_special(Front) ++
         "\" | [" ++ Result ++
         " | " ++ compile_tags(Back, State) ++ "]]";
     nomatch ->
-      "[\"" ++ T ++ "\"]"
+      "[\"" ++ escape_special(T) ++ "\"]"
   end.
 
 tag_kind(_T, {-1, 0}) ->
@@ -142,13 +151,21 @@ tag_kind(T, {K0, K1}) ->
   string:substr(T, K0 + 1, K1).
 
 compile_tag(none, Content, State) ->
-  Mod = State#mstate.mod,
-  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))";
+  compile_escaped_tag(Content, State);
+compile_tag("&", Content, State) ->
+  compile_unescaped_tag(Content, State);
 compile_tag("{", Content, State) ->
-  Mod = State#mstate.mod,
-  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
+  compile_unescaped_tag(Content, State);
 compile_tag("!", _Content, _State) ->
   "[]".
+
+compile_escaped_tag(Content, State) ->
+  Mod = State#mstate.mod,
+  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+
+compile_unescaped_tag(Content, State) ->
+  Mod = State#mstate.mod,
+  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
@@ -166,37 +183,17 @@ template_path(Mod) ->
   Basename = atom_to_list(Mod),
   filename:join(DirPath, Basename ++ ".mustache").
 
-get(Key, Ctx) when is_list(Key) ->
-  {ok, Mod} = dict:find('__mod__', Ctx),
-  get(list_to_atom(Key), Ctx, Mod);
-get(Key, Ctx) ->
-  {ok, Mod} = dict:find('__mod__', Ctx),
-  get(Key, Ctx, Mod).
-
-get(Key, Ctx, Mod) when is_list(Key) ->
-  get(list_to_atom(Key), Ctx, Mod);
 get(Key, Ctx, Mod) ->
-  case dict:find(Key, Ctx) of
-    {ok, Val} ->
-      % io:format("From Ctx {~p, ~p}~n", [Key, Val]),
-      to_s(Val);
-    error ->
-      case erlang:function_exported(Mod, Key, 1) of
-        true ->
-          Val = to_s(Mod:Key(Ctx)),
-          % io:format("From Mod/1 {~p, ~p}~n", [Key, Val]),
-          Val;
-        false ->
-          case erlang:function_exported(Mod, Key, 0) of
-            true ->
-              Val = to_s(Mod:Key()),
-              % io:format("From Mod/0 {~p, ~p}~n", [Key, Val]),
-              Val;
-            false ->
-              []
-          end
-      end
+  get(Key, mustache_ctx:module(Mod, Ctx)).
+
+get(Key, Ctx) when is_list(Key) ->
+  get(list_to_atom(Key), Ctx);
+get(Key, Ctx) ->
+  case mustache_ctx:get(Key, Ctx) of
+    {ok, Value} -> to_s(Value);
+    {error, _} -> []
   end.
+
 
 to_s(Val) when is_integer(Val) ->
   integer_to_list(Val);
@@ -212,14 +209,27 @@ escape(HTML) ->
 
 escape([], Acc) ->
   lists:reverse(Acc);
-escape(["<" | Rest], Acc) ->
+escape([$< | Rest], Acc) ->
   escape(Rest, lists:reverse("&lt;", Acc));
-escape([">" | Rest], Acc) ->
+escape([$> | Rest], Acc) ->
   escape(Rest, lists:reverse("&gt;", Acc));
-escape(["&" | Rest], Acc) ->
+escape([$& | Rest], Acc) ->
   escape(Rest, lists:reverse("&amp;", Acc));
 escape([X | Rest], Acc) ->
   escape(Rest, [X | Acc]).
+
+escape_special(String) ->
+    lists:flatten([escape_char(Char) || Char <- String]).
+
+escape_char($\0) -> "\\0";
+escape_char($\n) -> "\\n";
+escape_char($\t) -> "\\t";
+escape_char($\b) -> "\\b";
+escape_char($\r) -> "\\r";
+escape_char($')  -> "\\'";
+escape_char($")  -> "\\\"";
+escape_char($\\) -> "\\\\";
+escape_char(Char) -> Char.
 
 %%---------------------------------------------------------------------------
 
