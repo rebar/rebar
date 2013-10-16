@@ -478,12 +478,26 @@ use_source(Config, Dep, Count) ->
                            "with reason:~n~p.\n", [Dep#dep.dir, Reason])
             end;
         false ->
-            ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, Dep#dep.source]),
             require_source_engine(Dep#dep.source),
             {true, TargetDir} = get_deps_dir(Config, Dep#dep.app),
-            download_source(TargetDir, Dep#dep.source),
+            {true, TargetUrl} = determine_protocol(Config, Dep#dep.source),
+            ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, TargetUrl]),
+            download_source(TargetDir, TargetUrl),
             use_source(Config, Dep#dep { dir = TargetDir }, Count-1)
     end.
+
+determine_protocol({ssh, {git, Url, Tag}}) ->
+        {true, {git, re:replace(re:replace(Url, "^.[^:]*","ssh",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
+determine_protocol({http, {git, Url, Tag}}) ->
+        {true, {git, re:replace(re:replace(Url, "^.[^:]*","https",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
+determine_protocol({https, {git, Url, Tag}}) ->
+        {true, {git, re:replace(re:replace(Url, "^.[^:]*","https",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
+determine_protocol({default, Source}) ->
+        {true, Source};
+determine_protocol({Protocol, {Cvs, _,_}}) ->
+        ?ABORT("force_protocol ~p for ~p not implemented\n", [Protocol, Cvs]).
+determine_protocol(Config, Source) ->
+        determine_protocol({list_to_atom(rebar_config:get_global(Config, force_protocol, default)), Source}).
 
 download_source(AppDir, {hg, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
