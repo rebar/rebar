@@ -489,7 +489,7 @@ use_source(Config, Dep, Count) ->
 determine_protocol({ssh, {git, Url, Tag}}) ->
         {true, {git, re:replace(re:replace(Url, "^.[^:]*","ssh",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
 determine_protocol({http, {git, Url, Tag}}) ->
-        {true, {git, re:replace(re:replace(Url, "^.[^:]*","https",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
+        {true, {git, re:replace(re:replace(Url, "^.[^:]*","http",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
 determine_protocol({https, {git, Url, Tag}}) ->
         {true, {git, re:replace(re:replace(Url, "^.[^:]*","https",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
 determine_protocol({default, Source}) ->
