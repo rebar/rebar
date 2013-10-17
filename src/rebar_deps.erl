@@ -624,31 +624,31 @@ update_deps_int(Config0, UDD) ->
                   ],
 
     lists:foldl(fun(Dep, {Config, Updated}) ->
-                        {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
-                        Config2 = case has_vcs_dir(element(1, Dep#dep.source), AppDir) of
-                            false ->
-                                %% If the dep did not exist (maybe it was added)
-                                %% clone it. We'll traverse ITS deps below. and
-                                %% clone them if needed.
-                                {C1, _D1} = use_source(Config, Dep),
-                                C1;
-                            true ->
-                                Config
-                        end,
-                        ok = file:set_cwd(AppDir),
-                        Config3 = rebar_config:new(Config2),
-                        %% track where a dep comes from...
-                        Config4 = rebar_config:set(Config3, depowner,
-                                                   dict:append(Dep, ConfDir,
-                                                               rebar_config:get(Config3,
-                                                                                depowner,
-                                                                                dict:new()))),
+                {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
+                Config2 = case has_vcs_dir(element(1, Dep#dep.source), AppDir) of
+                    false ->
+                        %% If the dep did not exist (maybe it was added)
+                        %% clone it. We'll traverse ITS deps below. and
+                        %% clone them if needed.
+                        {C1, _D1} = use_source(Config, Dep),
+                        C1;
+                    true ->
+                        Config
+                end,
+                ok = file:set_cwd(AppDir),
+                Config3 = rebar_config:new(Config2),
+                %% track where a dep comes from...
+                Config4 = rebar_config:set(Config3, depowner,
+                                           dict:append(Dep, ConfDir,
+                                                       rebar_config:get(Config3,
+                                                                        depowner,
+                                                                        dict:new()))),
 
-                        {Config5, Res} = update_deps_int(Config4, Updated),
-                        {Config5, lists:umerge(lists:sort(Res),
-                                               lists:sort(Updated))}
-                end, {Config1, lists:umerge(lists:sort(UpdatedDeps),
-                                            lists:sort(UDD))}, UpdatedDeps).
+                {Config5, Res} = update_deps_int(Config4, Updated),
+                {Config5, lists:umerge(lists:sort(Res),
+                                       lists:sort(Updated))}
+        end, {Config1, lists:umerge(lists:sort(UpdatedDeps),
+                                    lists:sort(UDD))}, UpdatedDeps).
 
 should_skip_update_dep(Config, Dep) ->
     {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
@@ -673,12 +673,12 @@ collect_deps(Dir, C) ->
             {Config1, Deps} = find_deps(Config, read, RawDeps),
 
             lists:flatten(Deps ++ [begin
-                                       {true, AppDir} = get_deps_dir(Config1, Dep#dep.app),
-                                       collect_deps(AppDir, C)
+                                   {true, AppDir} = get_deps_dir(Config1, Dep#dep.app),
+                                   collect_deps(AppDir, C)
                                    end || Dep <- Deps]);
-        _ ->
-            []
-    end.
+                                   _ ->
+                                   []
+                                   end.
 
 
 %% ===================================================================
@@ -690,8 +690,8 @@ source_engine_avail(Source) ->
     source_engine_avail(Name, Source).
 
 source_engine_avail(Name, Source)
-  when Name == hg; Name == git; Name == svn; Name == bzr; Name == rsync;
-       Name == fossil ->
+        when Name == hg; Name == git; Name == svn; Name == bzr; Name == rsync;
+        Name == fossil ->
     case vcs_client_vsn(Name) >= required_vcs_client_vsn(Name) of
         true ->
             true;
@@ -746,7 +746,7 @@ has_vcs_dir(bzr, Dir) ->
     filelib:is_dir(filename:join(Dir, ".bzr"));
 has_vcs_dir(svn, Dir) ->
     filelib:is_dir(filename:join(Dir, ".svn"))
-        orelse filelib:is_dir(filename:join(Dir, "_svn"));
+    orelse filelib:is_dir(filename:join(Dir, "_svn"));
 has_vcs_dir(rsync, _) ->
     true;
 has_vcs_dir(_, _) ->
