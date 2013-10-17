@@ -498,7 +498,7 @@ determine_protocol({_, Source}) ->
     ?ABORT("force protocol for ~p\n not yet implemented", [element(1,Source)]).
 determine_protocol(Config, Source) ->
     Protocol = rebar_config:get_global(Config, protocol, "default"),
-    case lists:member(list_to_atom(Protocol), [http, https, ssh]) of
+    case lists:member(list_to_atom(Protocol), [default, http, https, ssh]) of
         true -> determine_protocol({Protocol, Source});
         false -> ?ABORT("~p not valid protocol\n", [Protocol])
     end.
