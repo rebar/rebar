@@ -488,7 +488,7 @@ use_source(Config, Dep, Count) ->
 
 git(Protocol, Url) -> 
     re:replace(re:replace(Url, "^.[^:]*",Protocol,[{return,list}]), ".git$", "",[{return,list}]).
-determine_protocol({default, Source}) ->
+determine_protocol({"default", Source}) ->
     {true, Source};
 determine_protocol({Protocol, {git, Url}}) ->
     {true, {git, git(Protocol, Url)}};
