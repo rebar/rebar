@@ -486,18 +486,22 @@ use_source(Config, Dep, Count) ->
             use_source(Config, Dep#dep { dir = TargetDir }, Count-1)
     end.
 
-determine_protocol({ssh, {git, Url, Tag}}) ->
-        {true, {git, re:replace(re:replace(Url, "^.[^:]*","ssh",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
-determine_protocol({http, {git, Url, Tag}}) ->
-        {true, {git, re:replace(re:replace(Url, "^.[^:]*","http",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
-determine_protocol({https, {git, Url, Tag}}) ->
-        {true, {git, re:replace(re:replace(Url, "^.[^:]*","https",[{return,list}]), ".git$", "",[{return,list}]), Tag}};
+git(Protocol, Url) -> 
+    re:replace(re:replace(Url, "^.[^:]*",Protocol,[{return,list}]), ".git$", "",[{return,list}]).
 determine_protocol({default, Source}) ->
-        {true, Source};
-determine_protocol({Protocol, {Cvs, _,_}}) ->
-        ?ABORT("force_protocol ~p for ~p not implemented\n", [Protocol, Cvs]).
+    {true, Source};
+determine_protocol({Protocol, {git, Url}}) ->
+    {true, {git, git(Protocol, Url)}};
+determine_protocol({Protocol, {git, Url, Tag}}) ->
+    {true, {git, git(Protocol, Url), Tag}};
+determine_protocol({_, Source}) ->
+    ?ABORT("force protocol for ~p\n not yet implemented", [element(1,Source)]).
 determine_protocol(Config, Source) ->
-        determine_protocol({list_to_atom(rebar_config:get_global(Config, force_protocol, default)), Source}).
+    Protocol = rebar_config:get_global(Config, protocol, "default"),
+    case lists:member(list_to_atom(Protocol), [default, http, https, ssh]) of
+        true -> determine_protocol({Protocol, Source});
+        false -> ?ABORT("~p not valid protocol\n", [Protocol])
+    end.
 
 download_source(AppDir, {hg, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
@@ -620,31 +624,31 @@ update_deps_int(Config0, UDD) ->
                   ],
 
     lists:foldl(fun(Dep, {Config, Updated}) ->
-                        {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
-                        Config2 = case has_vcs_dir(element(1, Dep#dep.source), AppDir) of
-                            false ->
-                                %% If the dep did not exist (maybe it was added)
-                                %% clone it. We'll traverse ITS deps below. and
-                                %% clone them if needed.
-                                {C1, _D1} = use_source(Config, Dep),
-                                C1;
-                            true ->
-                                Config
-                        end,
-                        ok = file:set_cwd(AppDir),
-                        Config3 = rebar_config:new(Config2),
-                        %% track where a dep comes from...
-                        Config4 = rebar_config:set(Config3, depowner,
-                                                   dict:append(Dep, ConfDir,
-                                                               rebar_config:get(Config3,
-                                                                                depowner,
-                                                                                dict:new()))),
+                {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
+                Config2 = case has_vcs_dir(element(1, Dep#dep.source), AppDir) of
+                    false ->
+                        %% If the dep did not exist (maybe it was added)
+                        %% clone it. We'll traverse ITS deps below. and
+                        %% clone them if needed.
+                        {C1, _D1} = use_source(Config, Dep),
+                        C1;
+                    true ->
+                        Config
+                end,
+                ok = file:set_cwd(AppDir),
+                Config3 = rebar_config:new(Config2),
+                %% track where a dep comes from...
+                Config4 = rebar_config:set(Config3, depowner,
+                                           dict:append(Dep, ConfDir,
+                                                       rebar_config:get(Config3,
+                                                                        depowner,
+                                                                        dict:new()))),
 
-                        {Config5, Res} = update_deps_int(Config4, Updated),
-                        {Config5, lists:umerge(lists:sort(Res),
-                                               lists:sort(Updated))}
-                end, {Config1, lists:umerge(lists:sort(UpdatedDeps),
-                                            lists:sort(UDD))}, UpdatedDeps).
+                {Config5, Res} = update_deps_int(Config4, Updated),
+                {Config5, lists:umerge(lists:sort(Res),
+                                       lists:sort(Updated))}
+        end, {Config1, lists:umerge(lists:sort(UpdatedDeps),
+                                    lists:sort(UDD))}, UpdatedDeps).
 
 should_skip_update_dep(Config, Dep) ->
     {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
@@ -669,12 +673,12 @@ collect_deps(Dir, C) ->
             {Config1, Deps} = find_deps(Config, read, RawDeps),
 
             lists:flatten(Deps ++ [begin
-                                       {true, AppDir} = get_deps_dir(Config1, Dep#dep.app),
-                                       collect_deps(AppDir, C)
+                                   {true, AppDir} = get_deps_dir(Config1, Dep#dep.app),
+                                   collect_deps(AppDir, C)
                                    end || Dep <- Deps]);
-        _ ->
-            []
-    end.
+                                   _ ->
+                                   []
+                                   end.
 
 
 %% ===================================================================
@@ -686,8 +690,8 @@ source_engine_avail(Source) ->
     source_engine_avail(Name, Source).
 
 source_engine_avail(Name, Source)
-  when Name == hg; Name == git; Name == svn; Name == bzr; Name == rsync;
-       Name == fossil ->
+        when Name == hg; Name == git; Name == svn; Name == bzr; Name == rsync;
+        Name == fossil ->
     case vcs_client_vsn(Name) >= required_vcs_client_vsn(Name) of
         true ->
             true;
@@ -742,7 +746,7 @@ has_vcs_dir(bzr, Dir) ->
     filelib:is_dir(filename:join(Dir, ".bzr"));
 has_vcs_dir(svn, Dir) ->
     filelib:is_dir(filename:join(Dir, ".svn"))
-        orelse filelib:is_dir(filename:join(Dir, "_svn"));
+    orelse filelib:is_dir(filename:join(Dir, "_svn"));
 has_vcs_dir(rsync, _) ->
     true;
 has_vcs_dir(_, _) ->
