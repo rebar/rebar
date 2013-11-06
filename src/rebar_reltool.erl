@@ -216,6 +216,12 @@ validate_rel_apps(ReltoolServer, {sys, ReltoolConfig}) ->
         Rel ->
             %% Invalid release format!
             ?ABORT("Invalid {rel, ...} section in reltools.config: ~p\n", [Rel])
+    end,
+    case reltool:get_status(ReltoolServer) of
+        {ok, Warnings} ->
+            [?WARN("Reltool: ~p\n", [W]) || W <- Warnings];
+        {error, Reason} ->
+            ?ABORT("Reltool: ~p\n", [Reason])
     end.
 
 app_exists(App, Server) when is_atom(App) ->
