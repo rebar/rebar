@@ -157,6 +157,8 @@
         {application_name, "1.0.*"},
         {application_name, "1.0.*",
          {git, "git://github.com/rebar/rebar.git", {branch, "master"}}},
+        {application_name, ".*",
+         {git_p4, "//depot/path/to/source"}},
         %% Dependencies can be marked as 'raw'. Rebar does not require
         %% such dependencies to have a standard Erlang/OTP layout
         %% which assumes the presence of either
