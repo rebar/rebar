@@ -256,7 +256,7 @@ deprecated(Old, New, Config, When) ->
     end.
 
 deprecated(Old, New, When) ->
-    io:format(
+    ?CONSOLE(
       <<"WARNING: deprecated ~p option used~n"
         "Option '~p' has been deprecated~n"
         "in favor of '~p'.~n"
