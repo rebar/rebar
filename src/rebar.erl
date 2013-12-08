@@ -86,8 +86,6 @@ run(["help"|RawCmds]) when RawCmds =/= [] ->
     rebar_core:help(BaseConfig2, [list_to_atom(C) || C <- Cmds]);
 run(["help"]) ->
     help();
-run(["info"|_]) ->
-    help();
 run(["version"]) ->
     ok = load_rebar_app(),
     %% Display vsn and build time info
