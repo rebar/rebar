@@ -87,6 +87,8 @@ run(["help"|RawCmds]) when RawCmds =/= [] ->
 run(["help"]) ->
     help();
 run(["info"|_]) ->
+    %% Catch calls to 'rebar info' to avoid treating plugins' info/2 functions
+    %% as commands.
     help();
 run(["version"]) ->
     ok = load_rebar_app(),
