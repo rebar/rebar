@@ -649,6 +649,50 @@ status_before_eunit() ->
 get_app_names() ->
     [AppName || {AppName, _, _} <- application:loaded_applications()].
 
+get_vertex_from_graph(Label, G, Vertices) ->
+    case orddict:find(Label, Vertices) of 
+        {ok, Vertex} -> 
+            {Vertex, Vertices};
+        error -> 
+            V = digraph:add_vertex(G),
+            digraph:add_vertex(G, V, Label),
+            {V, orddict:store(Label, V, Vertices)}
+    end.
+
+add_edges_to_graph(_, [], _, V) ->
+    V;
+add_edges_to_graph(Source, [Dest| Others], G, Vertices) ->
+    {Vsource, NewVertices}  = get_vertex_from_graph(Source, G, Vertices),
+    {Vdest, LatestVertices} = get_vertex_from_graph(Dest, G, NewVertices),
+    Edge = digraph:add_edge(G, Vsource, Vdest),
+    ?DEBUG("Adding dependency:~p(~p) --> ~p(~p) : ~p\n", [Source, Vsource, Dest, Vdest, Edge]),
+    add_edges_to_graph(Source, Others, G, LatestVertices).
+
+create_dependency_graph([], G, _) ->
+    G;
+create_dependency_graph([App|Apps], G, Vertices) ->
+    Deps = case application:get_key(App, applications) of {ok, L} when is_list(L) -> L; _ -> [] end,
+    NewVertices = add_edges_to_graph(App, Deps, G, Vertices),
+    create_dependency_graph(Apps, G, NewVertices).
+
+create_dependency_graph(Apps) ->
+    create_dependency_graph(Apps, digraph:new(), orddict:new()).
+
+sort_apps_by_dependency([]) -> [];
+sort_apps_by_dependency(Apps) when is_list(Apps) ->
+    G = create_dependency_graph(Apps),
+    case digraph_utils:topsort(G) of
+        false -> 
+            ?WARN("Dependency graph cannot be sorted. (Cyclic deps maybe?)\n", []),
+            Apps;
+        Vertices -> 
+            ?DEBUG("Ordered Vertices: ~p\n", [Vertices]),
+            %% retreive labels from the vertices and make sure we have not added any more elements than those present in the original 
+            %% list. Oddly enough 'sasl' and 'tools' appear in the dependency graph probably because of rebar, though they don't show 
+            %% in the loaded_applications() list.
+            [ X || X <- [begin {V, Label} = digraph:vertex(G, V), Label end || V <- Vertices], lists:member(X, Apps) ]
+    end.  
+
 reset_after_eunit({OldProcesses, WasAlive, OldAppEnvs, _OldACs}) ->
     IsAlive = erlang:is_alive(),
     if not WasAlive andalso IsAlive ->
@@ -662,16 +706,39 @@ reset_after_eunit({OldProcesses, WasAlive, OldAppEnvs, _OldACs}) ->
 
     OldApps = [App || {App, _} <- OldAppEnvs],
     Apps = get_app_names(),
-    _ = [begin
-             _ = case lists:member(App, OldApps) of
-                     true  -> ok;
-                     false -> application:stop(App)
-                 end,
-             ok = application:unset_env(App, K)
-         end || App <- Apps, App /= rebar,
-                {K, _V} <- application:get_all_env(App),
-                K =/= included_applications],
+    %% Now the problem is that Apps may be in any order but we want to stop applications
+    %% in dependency order to avoid crashes due to exit signals or missing processes.
+    %% To accomplish that we have to create the dependency digraph of the Apps in the list
+    %% and apply a topological sort. There's a chance (mostly related to manual intervention) 
+    %% of having a cycle in the digraph which makes the sorting impossible. In this case, we fallback
+    %% to the using the original list and pray.
+    SortedApps = sort_apps_by_dependency(Apps),
 
+    ?DEBUG("Apps      : ~p....\n", [Apps]),
+    ?DEBUG("OldApps   : ~p....\n", [OldApps]),
+    ?DEBUG("SortedApps: ~p....\n", [SortedApps]),
+
+    %% Now with our SortedApps, we'll iterate checking if each one ought to be stopped+unloaded or just have its
+    %% environment variables cleared for later rescontruction
+    lists:foreach(fun(rebar) -> ok;
+                     (App)   -> case lists:member(App, OldApps) of
+                                     true  -> ?DEBUG("Leaving application (from OldApps): ~p....\n", [App]),
+                                              Env = application:get_all_env(App),
+                                              lists:foreach(fun({included_applications, _}) -> ok;
+                                                               ({K, _V})                    -> ok = application:unset_env(App, K)
+                                                            end,
+                                                            Env);
+                                     false -> ?WARN("Stopping/Unloading application still loaded after the tests: ~p\n", [App]),
+                                              error_logger:tty(false),
+                                              application:stop(App),
+                                              application:unload(App),
+                                              error_logger:tty(true)
+                                end
+                   end,
+                   SortedApps),
+
+    %% QUESTION: Is it really necessary to reconstruct env for the stopped/unloaded applications too?
+    %%           Why not just reconstruct for OldApps ?
     reconstruct_app_env_vars(Apps),
 
     Processes = erlang:processes(),
@@ -680,6 +747,7 @@ reset_after_eunit({OldProcesses, WasAlive, OldAppEnvs, _OldACs}) ->
     ok.
 
 kill_extras(Pids) ->
+    ?INFO("KILLING EXTRAS: ~p....\n", [Pids]),
     %% Killing any of the procs below will either:
     %% 1. Interfere with stuff that we don't want interfered with, or
     %% 2. May/will force the 'kernel' app to shutdown, which *will*
@@ -731,6 +799,9 @@ kill_extras(Pids) ->
             Else
     end.
 
+reconstruct_app_env_vars([rebar|Apps]) ->
+    %% since rebar wasn't touched it shouldn't have its env reconstructed, right?
+    reconstruct_app_env_vars(Apps);
 reconstruct_app_env_vars([App|Apps]) ->
     CmdLine0 = proplists:get_value(App, init:get_arguments(), []),
     CmdVars = [{list_to_atom(K), list_to_atom(V)} || {K, V} <- CmdLine0],
