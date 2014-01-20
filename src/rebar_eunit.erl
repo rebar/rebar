@@ -661,18 +661,9 @@ reset_after_eunit({OldProcesses, WasAlive, OldAppEnvs, _OldACs}) ->
     end,
 
     OldApps = [App || {App, _} <- OldAppEnvs],
-    Apps = get_app_names(),
-    _ = [begin
-             _ = case lists:member(App, OldApps) of
-                     true  -> ok;
-                     false -> application:stop(App)
-                 end,
-             ok = application:unset_env(App, K)
-         end || App <- Apps, App /= rebar,
-                {K, _V} <- application:get_all_env(App),
-                K =/= included_applications],
 
-    reconstruct_app_env_vars(Apps),
+    _ = [begin _ = application:stop(App), application:unload(App) end ||
+         App <- get_app_names(), App /= rebar, not lists:member(App, OldApps)],
 
     Processes = erlang:processes(),
     _ = kill_extras(Processes -- OldProcesses),
@@ -731,59 +722,7 @@ kill_extras(Pids) ->
             Else
     end.
 
-reconstruct_app_env_vars([App|Apps]) ->
-    CmdLine0 = proplists:get_value(App, init:get_arguments(), []),
-    CmdVars = [{list_to_atom(K), list_to_atom(V)} || {K, V} <- CmdLine0],
-    AppFile = (catch filename:join([code:lib_dir(App),
-                                    "ebin",
-                                    atom_to_list(App) ++ ".app"])),
-    AppVars = case file:consult(AppFile) of
-                  {ok, [{application, App, Ps}]} ->
-                      proplists:get_value(env, Ps, []);
-                  _ ->
-                      []
-              end,
 
-    %% App vars specified in config files override those in the .app file.
-    %% Config files later in the args list override earlier ones.
-    AppVars1 = case init:get_argument(config) of
-                   {ok, ConfigFiles} ->
-                       {App, MergedAppVars} = lists:foldl(fun merge_app_vars/2,
-                                                          {App, AppVars},
-                                                          ConfigFiles),
-                       MergedAppVars;
-                   error ->
-                       AppVars
-               end,
-    AllVars = CmdVars ++ AppVars1,
-    ?DEBUG("Reconstruct ~p ~p\n", [App, AllVars]),
-    lists:foreach(fun({K, V}) -> application:set_env(App, K, V) end, AllVars),
-    reconstruct_app_env_vars(Apps);
-reconstruct_app_env_vars([]) ->
-    ok.
-
-merge_app_vars(ConfigFile, {App, AppVars}) ->
-    File = ensure_config_extension(ConfigFile),
-    FileAppVars = app_vars_from_config_file(File, App),
-    Dict1 = dict:from_list(AppVars),
-    Dict2 = dict:from_list(FileAppVars),
-    Dict3 = dict:merge(fun(_Key, _Value1, Value2) -> Value2 end, Dict1, Dict2),
-    {App, dict:to_list(Dict3)}.
-
-ensure_config_extension(File) ->
-    %% config files must end with .config on disk but when specifying them
-    %% via the -config option the extension is optional
-    BaseFileName = filename:basename(File, ".config"),
-    DirName = filename:dirname(File),
-    filename:join(DirName, BaseFileName ++ ".config").
-
-app_vars_from_config_file(File, App) ->
-    case file:consult(File) of
-        {ok, [Env]} ->
-            proplists:get_value(App, Env, []);
-        _ ->
-            []
-    end.
 
 wait_until_dead(Pid) when is_pid(Pid) ->
     Ref = erlang:monitor(process, Pid),
