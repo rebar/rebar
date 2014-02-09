@@ -301,12 +301,26 @@ get_shared_deps_dir(Config, Default) ->
     rebar_config:get_xconf(Config, deps_dir, Default).
 
 get_deps_dir(Config) ->
-    get_deps_dir(Config, "").
+    {true, get_deps_dir_base(Config, "")}.
 
-get_deps_dir(Config, App) ->
+%% Pick the dependency directory, works in the following way:
+%% Get all deps, filter the version suffix using #dep.vsn_regex,
+%% pick highest version number available or fallback to #dep.app
+get_deps_dir(Config, #dep{app = App, vsn_regex = VsnRegex}) ->
+    BaseDir = get_deps_dir_base(Config, App),
+    Dirs0 = lists:reverse(lists:sort(filelib:wildcard(BaseDir ++ "-*"))),
+
+    [Dir|_] = Dirs = lists:filter(fun(Dir) ->
+        nomatch =/= re:run(Dir, VsnRegex)
+    end, Dirs0) ++ [BaseDir],
+
+    ?DEBUG("Picked ~p directory from ~p~n", [Dir, Dirs]),
+    {true, Dir}.
+
+get_deps_dir_base(Config, Suffix) ->
     BaseDir = rebar_config:get_xconf(Config, base_dir, []),
     DepsDir = get_shared_deps_dir(Config, "deps"),
-    {true, filename:join([BaseDir, DepsDir, App])}.
+    filename:join([BaseDir, DepsDir, Suffix]).
 
 dep_dirs(Deps) ->
     [D#dep.dir || D <- Deps].
@@ -380,7 +394,7 @@ find_dep(Config, Dep) ->
 find_dep(Config, Dep, undefined) ->
     %% 'source' is undefined.  If Dep is not satisfied locally,
     %% go ahead and find it amongst the lib_dir's.
-    case find_dep_in_dir(Config, Dep, get_deps_dir(Config, Dep#dep.app)) of
+    case find_dep_in_dir(Config, Dep, get_deps_dir(Config, Dep)) of
         {_Config1, {avail, _Dir}} = Avail ->
             Avail;
         {Config1, {missing, _}} ->
@@ -390,7 +404,7 @@ find_dep(Config, Dep, _Source) ->
     %% _Source is defined.  Regardless of what it is, we must find it
     %% locally satisfied or fetch it from the original source
     %% into the project's deps
-    find_dep_in_dir(Config, Dep, get_deps_dir(Config, Dep#dep.app)).
+    find_dep_in_dir(Config, Dep, get_deps_dir(Config, Dep)).
 
 find_dep_in_dir(Config, _Dep, {false, Dir}) ->
     {Config, {missing, Dir}};
@@ -502,7 +516,7 @@ use_source(Config, Dep, Count) ->
         false ->
             ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, Dep#dep.source]),
             require_source_engine(Dep#dep.source),
-            {true, TargetDir} = get_deps_dir(Config, Dep#dep.app),
+            {true, TargetDir} = get_deps_dir(Config, Dep),
             download_source(TargetDir, Dep#dep.source),
             use_source(Config, Dep#dep { dir = TargetDir }, Count-1)
     end.
@@ -560,7 +574,7 @@ update_source(Config, Dep) ->
     %% VCS directory, such as when a source archive is built of a project, with
     %% all deps already downloaded/included. So, verify that the necessary VCS
     %% directory exists before attempting to do the update.
-    {true, AppDir} = get_deps_dir(Config, Dep#dep.app),
+    {true, AppDir} = get_deps_dir(Config, Dep),
     case has_vcs_dir(element(1, Dep#dep.source), AppDir) of
         true ->
             ?CONSOLE("Updating ~p from ~p\n", [Dep#dep.app, Dep#dep.source]),
