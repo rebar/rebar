@@ -95,29 +95,39 @@ preprocess(Config, _) ->
             %%
             %% Also, if skip_deps=comma,separated,app,list, then only the given
             %% dependencies are skipped.
-            NewConfig =
-                case rebar_config:get_global(Config3, skip_deps, false) of
-                    "true" ->
-                        lists:foldl(
-                          fun(#dep{dir = Dir}, C) ->
-                                  rebar_config:set_skip_dir(C, Dir)
-                          end, Config3, AvailableDeps);
-                    Apps when is_list(Apps) ->
-                        SkipApps = [list_to_atom(App) ||
-                                       App <- string:tokens(Apps, ",")],
-                        lists:foldl(
-                          fun(#dep{dir = Dir, app = App}, C) ->
-                                  case lists:member(App, SkipApps) of
-                                      true -> rebar_config:set_skip_dir(C, Dir);
-                                      false -> C
-                                  end
-                          end, Config3, AvailableDeps);
-                    _ ->
-                        Config3
-                end,
+            NewConfig = maybe_skip_deps(Config3, AvailableDeps),
 
             %% Return all the available dep directories for process
             {ok, NewConfig, dep_dirs(NonRawAvailableDeps)}
+    end.
+
+maybe_skip_deps(Config, AvailableDeps) ->
+    case rebar_config:get_global(Config, skip_deps, false) of
+        false ->
+            Config;
+        Skip ->
+            ?WARN(
+               "skip_deps= has been deprecated in favor of skip_apps= and "
+               "will be~nremoved in a future release.~n", []),
+            maybe_skip_deps(Config, AvailableDeps, Skip)
+    end.
+
+maybe_skip_deps(Config, AvailableDeps, Skip) ->
+    case Skip of
+        "true" ->
+            lists:foldl(
+              fun(#dep{dir = Dir}, C) ->
+                      rebar_config:set_skip_dir(C, Dir)
+              end, Config, AvailableDeps);
+        Apps when is_list(Apps) ->
+            SkipApps = [list_to_atom(App) || App <- string:tokens(Apps, ",")],
+            lists:foldl(
+              fun(#dep{dir = Dir, app = App}, C) ->
+                      case lists:member(App, SkipApps) of
+                          true -> rebar_config:set_skip_dir(C, Dir);
+                          false -> C
+                      end
+              end, Config, AvailableDeps)
     end.
 
 postprocess(Config, _) ->
