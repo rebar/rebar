@@ -172,8 +172,33 @@ run_aux(BaseConfig, Commands) ->
 
     BaseConfig1 = init_config1(BaseConfig),
 
+    %% NOTE: Recursion is only enabled by default for *-deps commands,
+    %% and to gracefully deprecate the old behaviour of 'get-deps compile'
+    %% we detect it and enable recursion.
+    %% TODO: Disable in a future release.
+    BaseConfig2 = maybe_suggest_prepare_deps(BaseConfig1, CommandAtoms),
+
     %% Process each command, resetting any state between each one
-    rebar_core:process_commands(CommandAtoms, BaseConfig1).
+    rebar_core:process_commands(CommandAtoms, BaseConfig2).
+
+maybe_suggest_prepare_deps(Config, Cmds) ->
+    maybe_suggest_prepare_deps(rebar_config:is_recursive(Config), Config, Cmds).
+
+maybe_suggest_prepare_deps(true, Config, _Cmds) ->
+    Config;
+maybe_suggest_prepare_deps(false, Config, ['get-deps', compile]) ->
+    io:put_chars(
+      <<"
+Instead of 'rebar get-deps compile' you should run 'rebar prepare-deps'.
+For the time being recursion is automatically enabled when
+'get-deps compile' is executed. This is only temporary to ease the
+migration and will be disabled in a future release. Also, if you want
+'compile' to be default-recursive, add {recursive_cmds, [compile]}
+to rebar.config.
+\n">>),
+    rebar_config:set_xconf(Config, recursive, true);
+maybe_suggest_prepare_deps(false, Config, _Cmds) ->
+    Config.
 
 %%
 %% print help/usage string
