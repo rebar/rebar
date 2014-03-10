@@ -26,6 +26,7 @@
               rebar_log,
               rebar_neotoma_compiler,
               rebar_otp_app,
+              rebar_plain_src_utils,
               rebar_port_compiler,
               rebar_protobuffs_compiler,
               rebar_qc,
@@ -82,6 +83,23 @@
                                rebar_shell,
                                rebar_xref
                               ]},
+
+              {plain_src_dir, [
+                               rebar_abnfc_compiler,
+                               rebar_protobuffs_compiler,
+                               rebar_neotoma_compiler,
+                               rebar_asn1_compiler,
+                               rebar_dia_compiler,
+                               rebar_erlc_compiler,
+                               rebar_lfe_compiler,
+                               rebar_erlydtl_compiler,
+                               rebar_port_compiler,
+                               rebar_ct,
+                               rebar_eunit,
+                               rebar_edoc,
+                               rebar_shell,
+                               rebar_xref
+                            ]},
 
                     {rel_dir, [
                                rebar_appups,

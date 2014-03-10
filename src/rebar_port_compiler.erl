@@ -288,15 +288,22 @@ get_specs(Config, AppFile) ->
 port_spec_from_legacy(Config, AppFile) ->
     %% Get the target from the so_name variable
     Target = case rebar_config:get(Config, so_name, undefined) of
-                 undefined ->
-                     %% Generate a sensible default from app file
-                     {_, AppName} = rebar_app_utils:app_name(Config, AppFile),
-                     filename:join("priv",
-                                   lists:concat([AppName, "_drv.so"]));
-                 AName ->
-                     %% Old form is available -- use it
-                     filename:join("priv", AName)
-             end,
+        undefined ->
+            case rebar_plain_src_utils:is_plain_src_dir(AppFile) of
+                {true, _} ->
+                    AppName = lists:last(filename:split(AppFile)),
+                    filename:join("priv",
+                       lists:concat([AppName, "_drv.so"]));
+                false ->
+                    %% Generate a sensible default from app file
+                    {_, AppName} = rebar_app_utils:app_name(Config, AppFile),
+                    filename:join("priv",
+                       lists:concat([AppName, "_drv.so"]))
+            end;
+        AName ->
+            %% Old form is available -- use it
+            filename:join("priv", AName)
+    end,
     %% Get the list of source files from port_sources
     Sources = port_sources(rebar_config:get_list(Config, port_sources,
                                                  ["c_src/*.c"])),

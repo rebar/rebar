@@ -137,7 +137,9 @@ info(help, 'list-templates') ->
     ?CONSOLE("List available templates.~n", []).
 
 create1(Config, TemplateId) ->
+    io:format("create1~n"),
     {AvailTemplates, Files} = find_templates(Config),
+    io:format("after find templates~n"),
     ?DEBUG("Available templates: ~p\n", [AvailTemplates]),
 
     %% Using the specified template id, find the matching template file/type.
@@ -149,6 +151,7 @@ create1(Config, TemplateId) ->
     %% Load the template definition as is and get the list of variables the
     %% template requires.
     TemplateTerms = consult(load_file(Files, Type, Template)),
+    io:format("before keyfind~n"),
     case lists:keyfind(variables, 1, TemplateTerms) of
         {variables, Vars} ->
             case parse_vars(Vars, dict:new()) of
