@@ -54,25 +54,64 @@ doc(Config, File) ->
 
     %% Get the edoc_opts and app file info
     EDocOpts = rebar_config:get(Config, edoc_opts, []),
-    {ok, Config1, AppName, _AppData} =
-        rebar_app_utils:load_app_file(Config, File),
-
-    case needs_regen(EDocOpts) of
-        true ->
-            ?INFO("Regenerating edocs for ~p\n", [AppName]),
-            ok = edoc:application(AppName, ".", EDocOpts);
-        false ->
-            ?INFO("Skipping regeneration of edocs for ~p\n", [AppName]),
-            ok
+    {ok, Config2} = case rebar_plain_src_utils:is_plain_src_dir(File) of
+        {true, _} -> doc_plain_src(Config, File, EDocOpts);
+        false -> doc_app(Config, File, EDocOpts)
     end,
-
     %% Restore code path
     true = code:set_path(CodePath),
-    {ok, Config1}.
+    {ok, Config2}.
 
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
+
+doc_plain_src(Config, File, EDocOpts) ->
+    case needs_regen(EDocOpts) of
+        true ->
+            ?INFO("Regenerating edocs for source directory ~pn", 
+                  [File]),
+            SourcePattern = filename:join([File,"src", "*.erl"]),
+            SourceFiles = filelib:wildcard(SourcePattern),
+            EDocOpts1 = case proplists:is_defined(dir, EDocOpts) of
+                true ->
+                    EDocOpts;
+                false ->
+                    DocDir = filename:join([File, "doc"]),
+                    filelib:ensure_dir(DocDir),
+                    [{dir, DocDir}] ++ EDocOpts
+            end,
+            ok = edoc:files(SourceFiles, EDocOpts1),
+            {ok, Config};
+        false ->
+            ?INFO("Skipping regeneration of edocs for "
+                  "source directory ~p~n", [File]),
+            {ok, Config}
+    end.
+
+doc_app(Config, File, EDocOpts) ->
+    case needs_regen(EDocOpts) of
+        true ->
+            ?INFO("Regenerating edocs for source directory ~pn", 
+                  [File]),
+            SourcePattern = filename:join([File,"src", "*.erl"]),
+            SourceFiles = filelib:wildcard(SourcePattern),
+            EDocOpts1 = case proplists:is_defined(dir, EDocOpts) of
+                true ->
+                    EDocOpts;
+                false ->
+                    DocDir = filename:join([File, "doc"]),
+                    filelib:ensure_dir(DocDir),
+                    [{dir, DocDir}] ++ EDocOpts
+            end,
+            ok = edoc:files(SourceFiles, EDocOpts1),
+            {ok, Config};
+        false ->
+            ?INFO("Skipping regeneration of edocs for "
+                  "source directory ~p~n", [File]),
+            {ok, Config}
+    end.
+
 
 info(help, doc) ->
     ?CONSOLE(

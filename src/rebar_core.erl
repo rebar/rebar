@@ -148,7 +148,7 @@ skip_or_process_dir({[], undefined}=ModuleSet, Config, CurrentCodePath,
 skip_or_process_dir({_, ModuleSetFile}=ModuleSet, Config, CurrentCodePath,
                     Dir, Command, DirSet) ->
     case lists:suffix(".app.src", ModuleSetFile)
-        orelse lists:suffix(".app", ModuleSetFile) of
+         orelse lists:suffix(".app", ModuleSetFile) of
         true ->
             %% .app or .app.src file, check if is_skipped_app
             skip_or_process_dir1(ModuleSetFile, ModuleSet,
@@ -327,6 +327,8 @@ is_dir_type(app_dir, Dir) ->
     rebar_app_utils:is_app_dir(Dir);
 is_dir_type(rel_dir, Dir) ->
     rebar_rel_utils:is_rel_dir(Dir);
+is_dir_type(plain_src_dir, Dir) ->
+    rebar_plain_src_utils:is_plain_src_dir(Dir);
 is_dir_type(_, _) ->
     false.
 

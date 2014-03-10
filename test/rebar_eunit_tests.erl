@@ -44,19 +44,19 @@
 %% Rebar EUnit and Cover Tests
 %% ====================================================================
 
-eunit_test_() ->
-    {"Ensure EUnit runs with tests in a 'test' dir and no defined suite",
-     setup, fun() -> setup_basic_project(), rebar("-v eunit") end,
+plain_src_test_() ->
+    {"Ensure a non-OTP project compiles and runs eunit.",
+     setup, fun() -> setup_simple_project(), rebar("-v eunit") end,
      fun teardown/1,
      fun(RebarOut) ->
-             [{"Tests in 'test' directory are found and run",
-               ?_assert(string:str(RebarOut, "myapp_mymod_tests:") =/= 0)},
+             [{"File in src is found and compiled",
+               ?_assert(string:str(RebarOut, "Compiled src/simple.erl") =/= 0)},
 
-              {"Tests in 'src' directory are found and run",
-               ?_assert(string:str(RebarOut, "myapp_mymod:") =/= 0)},
+              {"Unit test in test is found and compiled",
+               ?_assert(string:str(RebarOut, "Compiled test/simple_tests.erl") =/= 0)},
 
-              {"Tests are only run once",
-               ?_assert(string:str(RebarOut, "All 2 tests passed") =/= 0)}]
+              {"Test is run",
+               ?_assert(string:str(RebarOut, "Test passed.") =/= 0)}]
      end}.
 
 eunit_with_suites_and_tests_test_() ->
@@ -351,6 +351,11 @@ setup_environment() ->
     ok = make_tmp_dir(),
     prepare_rebar_script(),
     ok = file:set_cwd(?TMP_DIR).
+
+setup_simple_project() ->
+    setup_environment(),
+    rebar("create template=simplemod modid=simple"),
+    ok = file:make_dir("ebin").
 
 setup_basic_project() ->
     setup_environment(),
