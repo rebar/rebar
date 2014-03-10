@@ -148,7 +148,7 @@ skip_or_process_dir({[], undefined}=ModuleSet, Config, CurrentCodePath,
 skip_or_process_dir({_, ModuleSetFile}=ModuleSet, Config, CurrentCodePath,
                     Dir, Command, DirSet) ->
     case lists:suffix(".app.src", ModuleSetFile)
-          orelse lists:suffix(".app", ModuleSetFile) of
+         orelse lists:suffix(".app", ModuleSetFile) of
         true ->
             %% .app or .app.src file, check if is_skipped_app
             skip_or_process_dir1(ModuleSetFile, ModuleSet,
