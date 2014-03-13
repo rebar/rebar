@@ -500,11 +500,39 @@ use_source(Config, Dep, Count) ->
                            "with reason:~n~p.\n", [Dep#dep.dir, Reason])
             end;
         false ->
-            ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, Dep#dep.source]),
             require_source_engine(Dep#dep.source),
             {true, TargetDir} = get_deps_dir(Config, Dep#dep.app),
-            download_source(TargetDir, Dep#dep.source),
+            {true, TargetUrl} = set_protocol(Config, Dep#dep.source),
+            ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, TargetUrl]),
+            download_source(TargetDir, TargetUrl),
             use_source(Config, Dep#dep { dir = TargetDir }, Count-1)
+    end.
+
+set_protocol(bzr, "ssh", Url) -> 
+    re:replace(Url, "^.[^:]*","bzr+ssh",[{return,list}]);
+set_protocol(fossil, _Protocol, Url) -> 
+    Url;
+set_protocol(git, Protocol, Url) -> 
+    re:replace(re:replace(Url, "^.[^:]*",Protocol,[{return,list}]), ".git$", "",[{return,list}]);
+set_protocol(rsync, _Protocol, Url) -> 
+    Url;
+set_protocol(svn, "ssh", Url) -> 
+    re:replace(Url, "^.[^:]*","svn+ssh",[{return,list}]);
+set_protocol(_Cvs, Protocol, Url) -> 
+    re:replace(Url, "^.[^:]*",Protocol,[{return,list}]).
+
+set_protocol({"default", Source}) ->
+    {true, Source};
+set_protocol({Protocol, {Cvs, Url}}) ->
+    {true, {Cvs, set_protocol(Cvs, Protocol, Url)}};
+set_protocol({Protocol, {Cvs, Url, Tag}}) ->
+    {true, {Cvs, set_protocol(Cvs, Protocol, Url), Tag}}.
+
+set_protocol(Config, Source) ->
+    Protocol = rebar_config:get_global(Config, force_protocol, "default"),
+    case lists:member(list_to_atom(Protocol), [default, http, https, ssh]) of
+        true -> set_protocol({Protocol, Source});
+        false -> ?ABORT("~p invalid option\n", [Protocol])
     end.
 
 download_source(AppDir, {hg, Url, Rev}) ->
