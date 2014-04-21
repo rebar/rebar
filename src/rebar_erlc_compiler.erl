@@ -137,7 +137,8 @@ test_compile(Config, Cmd, OutDir) ->
     %% Copy source files to eunit dir for cover in case they are not directly
     %% in src but in a subdirectory of src. Cover only looks in cwd and ../src
     %% for source files. Also copy files from src_dirs.
-    ErlOpts = rebar_utils:erl_opts(Config),
+    
+    ErlOpts = rebar_utils:erl_opts(test_compile_config(Config, rebar_utils:erl_opts(Config), Cmd)),
 
     SrcDirs = rebar_utils:src_dirs(proplists:append_values(src_dirs, ErlOpts)),
     SrcErls = lists:foldl(
