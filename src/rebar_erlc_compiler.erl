@@ -172,8 +172,8 @@ test_compile(Config, Cmd, OutDir) ->
     %% Compile erlang code to OutDir, using a tweaked config
     %% with appropriate defines for eunit, and include all the test modules
     %% as well.
-    ok = doterl_compile(test_compile_config(Config, ErlOpts, Cmd),
-                        OutDir, TestErls, ErlOpts),
+    TestConfig = test_compile_config(Config, ErlOpts, Cmd),
+    ok = doterl_compile(TestConfig, OutDir, TestErls, rebar_utils:erl_opts(TestConfig)),
 
     {ok, SrcErls}.
 
