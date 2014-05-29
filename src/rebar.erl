@@ -207,9 +207,18 @@ help() ->
        "  ~p~n"
        "  ~p~n"
        "  ~p~n"
-       "  ~p~n",
+       "  ~p~n"
+       "  ~p~n"
+       "  ~p~n"
+       "  ~p~n"
+       "Core command line options:~n"
+       "  apps=app1,app2 (specify apps to process)~n"
+       "  skip_apps=app1,app2 (specify apps to skip)~n",
        [
         {recursive_cmds, []},
+        {require_erts_vsn, ".*"},
+        {require_otp_vsn, ".*"},
+        {require_min_otp_vsn, ".*"},
         {lib_dirs, []},
         {sub_dirs, ["dir1", "dir2"]},
         {plugins, [plugin1, plugin2]},
@@ -399,6 +408,9 @@ ct          [suite[s]=] [case=]          Run common_test suites
 qc                                       Test QuickCheck properties
 
 xref                                     Run cross reference analysis
+
+shell                                    Start a shell similar to
+                                         'erl -pa ebin -pa deps/*/ebin'
 
 help                                     Show the program options
 version                                  Show version information

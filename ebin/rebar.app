@@ -3,7 +3,7 @@
 
 {application, rebar,
  [{description, "Rebar: Erlang Build Tool"},
-  {vsn, "2.2.0"},
+  {vsn, "2.3.1"},
   {modules, [ rebar,
               rebar_abnfc_compiler,
               rebar_app_utils,
@@ -93,7 +93,7 @@
                    ]},
          {recursive_cmds, [
                            'check-deps',
-                           'compile',
+                           compile,
                            'delete-deps',
                            'get-deps',
                            'list-deps',
