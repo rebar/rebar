@@ -522,19 +522,19 @@ expand_file_names(Files, Dirs) ->
               end
       end, Files).
 
--spec get_parents(digraph(), file:filename()) -> [file:filename()].
+-spec get_parents(digraph:graph(), file:filename()) -> [file:filename()].
 get_parents(G, Source) ->
     %% Return all files which the Source depends upon.
     digraph_utils:reachable_neighbours([Source], G).
 
--spec get_children(digraph(), file:filename()) -> [file:filename()].
+-spec get_children(digraph:graph(), file:filename()) -> [file:filename()].
 get_children(G, Source) ->
     %% Return all files dependent on the Source.
     digraph_utils:reaching_neighbours([Source], G).
 
 -spec internal_erl_compile(rebar_config:config(), file:filename(),
                            file:filename(), list(),
-                           digraph()) -> 'ok' | 'skipped'.
+                           digraph:graph()) -> 'ok' | 'skipped'.
 internal_erl_compile(Config, Source, OutDir, ErlOpts, G) ->
     %% Determine the target name and includes list by inspecting the source file
     Module = filename:basename(Source, ".erl"),
