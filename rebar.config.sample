@@ -89,6 +89,12 @@
 %% Options for the ErlyDTL compiler
 {erlydtl_opts, []}.
 
+%% == Protobuffs Compiler ==
+
+%% Options for protobuffs compiler. If "compile_flags" is not set,
+%% it will use erl_opts as "compile_flags"
+{protobuffs_opts, []}.
+
 %% == EUnit ==
 
 %% Options for eunit:test()

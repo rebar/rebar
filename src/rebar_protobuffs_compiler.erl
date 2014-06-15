@@ -87,8 +87,10 @@ info_help(Description) ->
        "~s.~n"
        "~n"
        "Valid rebar.config options:~n"
-       "  erl_opts is passed as compile_flags to "
-       "protobuffs_compile:scan_file/2~n",
+       "  {protobuffs_opts, []}~n"
+       "  Options in protobuffs_opts will be passed to the options~n"
+       "  of protobuffs_compile:scan_file/2. If compile_flags is~n"
+       "  not specified, it will use erl_opts.~n",
        [Description]).
 
 protobuffs_is_present() ->
@@ -116,9 +118,16 @@ compile_each(Config, [{Proto, Beam, Hrl} | Rest]) ->
     case needs_compile(Proto, Beam) of
         true ->
             ?CONSOLE("Compiling ~s\n", [Proto]),
-            ErlOpts = rebar_utils:erl_opts(Config),
-            case protobuffs_compile:scan_file(Proto,
-                                              [{compile_flags,ErlOpts}]) of
+            ProtobuffsOpts = rebar_config:get(Config, protobuffs_opts, []),
+            ProtobuffsConfig =
+                case proplists:get_value(compile_flags, ProtobuffsOpts) of
+                    undefined ->
+                        ErlOpts = rebar_utils:erl_opts(Config),
+                        [{compile_flags, ErlOpts} | ProtobuffsOpts];
+                    _ ->
+                        ProtobuffsOpts
+                end,
+            case protobuffs_compile:scan_file(Proto, ProtobuffsConfig) of
                 ok ->
                     %% Compilation worked, but we need to move the
                     %% beam and .hrl file into the ebin/ and include/
