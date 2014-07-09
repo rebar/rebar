@@ -39,7 +39,16 @@
 %% ===================================================================
 
 compile(Config, _AppFile) ->
-    case rebar_utils:find_files("src", ".*\\.proto$") of
+    %% Check if we have imports_dir configured, if so, use the configured
+    %% value instead of 'src' to scan for all proto files
+    ProtobufOpts = rebar_config:get(Config, protobuffs_opts, []),
+    FoundFiles = case proplists:get_value(imports_dir, ProtobufOpts) of
+                     undefined ->
+                         rebar_utils:find_files("src", ".*\\.proto$");
+                     ImportDir ->
+                         rebar_utils:find_files(ImportDir, ".*\\.proto$")
+                 end,
+    case FoundFiles of
         [] ->
             ok;
         FoundFiles ->
@@ -88,7 +97,11 @@ info_help(Description) ->
        "~n"
        "Valid rebar.config options:~n"
        "  erl_opts is passed as compile_flags to "
-       "protobuffs_compile:scan_file/2~n",
+       "protobuffs_compile:scan_file/2~n"
+       "  protobuffs_opts is also passed to "
+       "protobuffs_compile:scan_file/2 as well,"
+       " refer to https://github.com/basho/erlang_protobuffs"
+       " for all available options~n",
        [Description]).
 
 protobuffs_is_present() ->
@@ -115,10 +128,11 @@ compile_each(_, []) ->
 compile_each(Config, [{Proto, Beam, Hrl} | Rest]) ->
     case needs_compile(Proto, Beam) of
         true ->
-            ?CONSOLE("Compiling ~s\n", [Proto]),
+            ?CONSOLE("Compiling proto file ~s\n", [Proto]),
             ErlOpts = rebar_utils:erl_opts(Config),
+            ProtobufOpts = rebar_config:get(Config, protobuffs_opts, []),
             case protobuffs_compile:scan_file(Proto,
-                                              [{compile_flags,ErlOpts}]) of
+                [{compile_flags,ErlOpts}|ProtobufOpts]) of
                 ok ->
                     %% Compilation worked, but we need to move the
                     %% beam and .hrl file into the ebin/ and include/

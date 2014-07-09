@@ -89,6 +89,13 @@
 %% Options for the ErlyDTL compiler
 {erlydtl_opts, []}.
 
+%% == Protobuffs Compiler ==
+
+%% Options for the Protobuffs Erlang compiler
+%% Refer to https://github.com/basho/erlang_protobuffs for all
+%% available options
+{protobuffs_opts, []}.
+
 %% == EUnit ==
 
 %% Options for eunit:test()
