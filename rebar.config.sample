@@ -77,6 +77,11 @@
 {escript_comment, "%%\n"}.
 {escript_emu_args, "%%! -pa application/application/ebin\n"}.
 
+%% If you change the name of the rebar application, still invoke the rebar
+%% module.
+{escript_emu_args,
+ "%%! -pa application/application/ebin -escript main rebar\n"}.
+
 %% == LFE Compiler ==
 
 %% LFE files to compile before the rest

@@ -69,7 +69,7 @@ main(Args) ->
 
 %% Erlang-API entry point
 run(BaseConfig, Commands) ->
-    _ = application:load(rebar),
+    _ = application:load(?APP),
     run_aux(BaseConfig, Commands).
 
 %% ====================================================================
@@ -117,7 +117,7 @@ run(RawArgs) ->
 
 load_rebar_app() ->
     %% Pre-load the rebar app so that we get default configuration
-    ok = application:load(rebar).
+    ok = application:load(?APP).
 
 init_config({Options, _NonOptArgs}) ->
     %% If $HOME/.rebar/config exists load and use as global config
@@ -313,7 +313,7 @@ set_log_level(Config, Options) ->
 %% show version information and halt
 %%
 version() ->
-    {ok, Vsn} = application:get_key(rebar, vsn),
+    {ok, Vsn} = application:get_key(?APP, vsn),
     ?CONSOLE("rebar ~s ~s ~s ~s\n",
              [Vsn, ?OTP_INFO, ?BUILD_TIME, ?VCS_INFO]).
 

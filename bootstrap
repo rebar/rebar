@@ -2,7 +2,10 @@
 %% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ft=erlang ts=4 sw=4 et
 
+-include("include/rebar.hrl").
+
 main(Args) ->
+    App = atom_to_list(?APP),
     %% Get a string repr of build time
     Built = build_time(),
 
@@ -48,16 +51,16 @@ main(Args) ->
         up_to_date ->
             ok;
         error ->
-            io:format("Failed to compile rebar files!\n"),
+            io:format("Failed to compile " ++ App ++ " files!\n"),
             halt(1)
     end,
 
     %% Make sure file:consult can parse the .app file
-    case file:consult("ebin/rebar.app") of
+    case file:consult("ebin/" ++ App ++ ".app") of
         {ok, _} ->
             ok;
         {error, Reason} ->
-            io:format("Invalid syntax in ebin/rebar.app: ~p\n", [Reason]),
+            io:format("Invalid syntax in ebin/~s.app: ~p\n", [App, Reason]),
             halt(1)
     end,
 
@@ -73,10 +76,10 @@ main(Args) ->
     %%  or write out script files on win32.
     case os:type() of
         {unix,_} ->
-            [] = os:cmd("chmod u+x rebar"),
+            [] = os:cmd("chmod u+x " ++ App),
             ok;
         {win32,_} ->
-            write_windows_scripts(),
+            write_windows_scripts(App),
             ok;
         _ ->
             ok
@@ -84,10 +87,10 @@ main(Args) ->
 
     %% Add a helpful message
     io:format("Congratulations! You now have a self-contained script called"
-              " \"rebar\" in\n"
+              " \"" ++ App ++ "\" in\n"
               "your current working directory. "
               "Place this script anywhere in your path\n"
-              "and you can use rebar to build OTP-compliant apps.\n").
+              "and you can use " ++ App ++ " to build OTP-compliant apps.\n").
 
 is_otp(OtpInfo, Regex) ->
      case re:run(OtpInfo, Regex, [{capture, none}]) of
@@ -126,10 +129,10 @@ vcs_info([{Id, Dir, VsnCmd, StatusCmd} | Rest]) ->
             vcs_info(Rest)
     end.
 
-write_windows_scripts() ->
+write_windows_scripts(AppName) ->
     CmdScript=
         "@echo off\r\n"
         "setlocal\r\n"
         "set rebarscript=%~f0\r\n"
         "escript.exe \"%rebarscript:.cmd=%\" %*\r\n",
-    ok = file:write_file("rebar.cmd", CmdScript).
+    ok = file:write_file(AppName ++ ".cmd", CmdScript).

@@ -1,3 +1,5 @@
+-define(APP, rebar).
+
 %% TODO: rename FAIL to ABORT once we require at least R13B04 for
 %% building rebar. Macros with different arity were not supported by the
 %% compiler before 13B04.

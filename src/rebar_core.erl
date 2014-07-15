@@ -36,8 +36,8 @@
 
 help(ParentConfig, Commands) ->
     %% get all core modules
-    {ok, AnyDirModules} = application:get_env(rebar, any_dir_modules),
-    {ok, RawCoreModules} = application:get_env(rebar, modules),
+    {ok, AnyDirModules} = application:get_env(?APP, any_dir_modules),
+    {ok, RawCoreModules} = application:get_env(?APP, modules),
     AppDirModules = proplists:get_value(app_dir, RawCoreModules),
     RelDirModules = proplists:get_value(rel_dir, RawCoreModules),
     CoreModules = AnyDirModules ++ AppDirModules ++ RelDirModules,
@@ -136,7 +136,7 @@ process_dir(Dir, Command, ParentConfig, DirSet) ->
             %% Get the list of processing modules and check each one
             %% against CWD to see if it's a fit -- if it is, use that
             %% set of modules to process this dir.
-            {ok, AvailModuleSets} = application:get_env(rebar, modules),
+            {ok, AvailModuleSets} = application:get_env(?APP, modules),
             ModuleSet = choose_module_set(AvailModuleSets, Dir),
             skip_or_process_dir(Dir, Command, Config, DirSet, CurrentCodePath,
                                 ModuleSet, WouldCd)
@@ -159,7 +159,7 @@ would_cd_into_dir1(Dir, Command, Config) ->
 %% Check whether the command is part of the built-in (or extended via
 %% rebar.config) list of default-recursive commands.
 is_recursive_command(Command, Config) ->
-    {ok, AppCmds} = application:get_env(rebar, recursive_cmds),
+    {ok, AppCmds} = application:get_env(?APP, recursive_cmds),
     ConfCmds = rebar_config:get_local(Config, recursive_cmds, []),
     RecursiveCmds = AppCmds ++ ConfCmds,
     lists:member(Command, RecursiveCmds).
@@ -225,7 +225,7 @@ process_dir1(Dir, Command, Config, DirSet, CurrentCodePath,
     %% of modules that are processed in addition to modules associated
     %% with this directory type. These any_dir modules are processed
     %% FIRST.
-    {ok, AnyDirModules} = application:get_env(rebar, any_dir_modules),
+    {ok, AnyDirModules} = application:get_env(?APP, any_dir_modules),
 
     Modules = AnyDirModules ++ DirModules,
 
