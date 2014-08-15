@@ -346,7 +346,8 @@ set_log_level(Config, Options) ->
 version() ->
     {ok, Vsn} = application:get_key(rebar, vsn),
     ?CONSOLE("rebar ~s ~s ~s ~s\n",
-             [Vsn, ?OTP_INFO, ?BUILD_TIME, ?VCS_INFO]).
+             [Vsn, ?OTP_INFO, ?BUILD_TIME, ?VCS_INFO]),
+    Vsn.
 
 
 %%
