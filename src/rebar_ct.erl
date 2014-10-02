@@ -226,9 +226,10 @@ make_cmd(TestDir, RawLogDir, Config) ->
                         filename:join(Cwd, TestDir)]) ++
                       get_cover_config(Config, Cwd) ++
                       get_ct_config_file(TestDir) ++
-                      get_config_file(TestDir) ++
                       get_suites(Config, TestDir) ++
-                      get_case(Config);
+                      get_case(Config) ++
+                      " -erl_args" ++
+                      get_config_file(TestDir);
               SpecFlags ->
                   ?FMT("~s"
                        " -pa ~s"
