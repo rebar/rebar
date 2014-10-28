@@ -100,19 +100,35 @@ run(RawArgs) ->
     %% run -- and start running commands
     Args = parse_args(RawArgs),
     BaseConfig = init_config(Args),
-    {BaseConfig1, Cmds} = save_options(BaseConfig, Args),
+    BaseConfig1 = maybe_remove_hooks(BaseConfig, Args),
+    {BaseConfig2, Cmds} = save_options(BaseConfig1, Args),
 
-    case rebar_config:get_xconf(BaseConfig1, enable_profiling, false) of
+    case rebar_config:get_xconf(BaseConfig2, enable_profiling, false) of
         true ->
             io:format("Profiling!\n"),
             try
-                fprof:apply(fun run_aux/2, [BaseConfig1, Cmds])
+                fprof:apply(fun run_aux/2, [BaseConfig2, Cmds])
             after
                 ok = fprof:profile(),
                 ok = fprof:analyse([{dest, "fprof.analysis"}])
             end;
         false ->
-            run_aux(BaseConfig1, Cmds)
+            run_aux(BaseConfig2, Cmds)
+    end.
+
+maybe_remove_hooks(BaseConfig, {Options, _NonOptArgs}) ->
+    IgnorePreHooks = proplists:get_bool(ignore_pre_hooks, Options),
+    IgnorePostHooks = proplists:get_bool(ignore_post_hooks, Options),
+    IgnoreHooks = proplists:get_bool(ignore_hooks, Options),
+
+    BaseConfig1 = case IgnorePreHooks or IgnoreHooks of
+                      true -> rebar_config:set(BaseConfig, pre_hooks, []);
+                      false -> BaseConfig
+                  end,
+
+    case IgnorePostHooks or IgnoreHooks of
+        true -> rebar_config:set(BaseConfig1, post_hooks, []);
+        false -> BaseConfig1
     end.
 
 load_rebar_app() ->
@@ -443,7 +459,13 @@ option_spec_list() ->
      {keep_going, $k, "keep-going", undefined,
       "Keep running after a command fails"},
      {recursive, $r, "recursive", boolean,
-      "Apply commands to subdirs and dependencies"}
+      "Apply commands to subdirs and dependencies"},
+     {ignore_pre_hooks,   $x, "ignore-pre-hooks",  boolean,
+       "Ignore pre_hooks"},
+     {ignore_post_hooks,  $y, "ignore-post-hooks", boolean,
+       "Ignore post_hooks"},
+     {ignore_hooks,       $z, "ignore-hooks",      boolean,
+       "Ignore pre_hooks and post_hooks"}
     ].
 
 %%
