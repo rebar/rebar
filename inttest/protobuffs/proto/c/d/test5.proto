@@ -1,0 +1,16 @@
+package test5;
+
+service test5
+{
+	rpc testRpc5(RPC_INPUT5) returns (RPC_OUTPUT5);
+}
+
+message RPC_INPUT5
+{
+	optional string str = 1;
+}
+
+message RPC_OUTPUT5
+{
+	optional string str = 1;
+}

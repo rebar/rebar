@@ -49,6 +49,10 @@ help(ParentConfig, Commands) ->
     Config = maybe_load_local_config(Dir, ParentConfig),
     {ok, PluginModules} = plugin_modules(Config, PredirsAssoc),
 
+    %% make sure all the deps are added to the code path
+    %% this is that each compiler is able to access help specific data
+    rebar_deps:preprocess(Config, undefined),
+
     AllModules = CoreModules ++ PluginModules,
 
     lists:foreach(

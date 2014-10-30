@@ -243,3 +243,34 @@
 {xref_queries,
  [{"(XC - UC) || (XU - X - B"
    " - (\"mod\":\".*foo\"/\"4\"))",[]}]}.
+
+%% == Protocol Buffers compiler ==
+
+%% default values filled out, typical tuples uncommented
+%% several proto_dir tuples can be defined, each with it's own settings
+%% explanation for each one can be found in path/to/gpb/bin/protoc-erl --help
+{proto_opts, [{proto_dir, "proto", non_recursive,
+                [{i, "."},
+                 {o_erl, "src"},
+              %% {o, ""},
+                 {o_hrl, "include"}
+              %% {o_nif_cc, ""},
+              %% {nif, false},
+              %% {load_nif, ""},
+              %% {optionally, always, never}
+              %% {verify, never},
+              %% {true, false, auto, integer, float}
+              %% {copy_bytes, ""},
+              %% {strings_as_binaries, false},
+              %% {defs_as_proplists, false},
+              %% {msg_name_prefix, ""},
+              %% {msg_name_prefix, ""},
+              %% {module_name_prefix, ""},
+              %% {msg_name_suffix, ""},
+              %% {module_name_suffix, "_pb"}
+              %% {include_as_lib, false},
+              %% {type_specs, false},
+              %% {descriptor, false},
+              %% {maps, true}
+                ]}
+              ]}.
