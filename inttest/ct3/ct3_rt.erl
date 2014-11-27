@@ -43,8 +43,6 @@ run(_Dir) ->
     {ok, _} = retest:sh("./rebar compile ct -v"),
     ok.
 
-
-
 %%
 %% Generate the contents of a simple .app file
 %%
