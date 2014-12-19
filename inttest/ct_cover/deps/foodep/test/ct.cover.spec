@@ -1,0 +1,2 @@
+{level, details}.
+{mods, [foodep]}.
