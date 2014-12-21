@@ -47,9 +47,11 @@ proto_compile(Config, _AppFile, _ProtoFiles) ->
     %% since we have.proto files that need building
     case gpb_is_present() of
         true ->
+            GpbOpts = gpb_opts(Config),
+            ModuleSuffix = proplists:get_value(module_name_suffix, GpbOpts, ""),
             rebar_base_compiler:run(Config, [],
                                     "src", ".proto",
-                                    "src", ".erl",
+                                    "src", ModuleSuffix ++ ".erl",
                                     fun compile_gpb/3,
                                     [{check_last_mod, true}]);
         false ->
