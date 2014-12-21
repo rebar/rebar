@@ -290,8 +290,10 @@ get_cover_config(Config, Cwd) ->
     end.
 
 collect_glob(Config, Cwd, Glob) ->
-    {true, Deps} = rebar_deps:get_deps_dir(Config),
+    {true, DepsRaw} = rebar_deps:get_deps_dir(Config),
+    DepsParts = filename:split(DepsRaw),
     CwdParts = filename:split(Cwd),
+    [Deps] = remove_common_prefix(DepsParts, CwdParts),
     filelib:fold_files(Cwd, Glob, true, fun(F, Acc) ->
         %% Ignore any specs under the deps/ directory. Do this pulling
         %% the dirname off the F and then splitting it into a list.
