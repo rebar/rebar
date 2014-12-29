@@ -595,8 +595,8 @@ internal_erl_compile(Config, Source, OutDir, ErlOpts, G) ->
 compile_mib(Source, Target, Config) ->
     ok = rebar_utils:ensure_dir(Target),
     ok = rebar_utils:ensure_dir(filename:join("include", "dummy.hrl")),
-    Opts = [{outdir, "priv/mibs"}, {i, ["priv/mibs"]}] ++
-        rebar_config:get(Config, mib_opts, []),
+    Opts = rebar_config:get(Config, mib_opts, []) ++
+        [{outdir, "priv/mibs"}, {i, ["priv/mibs"]}],
     case snmpc:compile(Source, Opts) of
         {ok, _} ->
             Mib = filename:rootname(Target),
