@@ -62,6 +62,21 @@ run(Config, FirstFiles, SourceDir, SourceExt, TargetDir, TargetExt,
 
 run(Config, FirstFiles, SourceDir, SourceExt, TargetDir, TargetExt,
     Compile3Fn, Opts) ->
+    ListExt = case is_flat_list(SourceExt) of
+        true -> [SourceExt];
+        _ -> SourceExt
+    end,
+    ListDir = case is_flat_list(SourceDir) of
+        true -> [SourceDir];
+        _ -> SourceDir
+    end,
+    lists:foldl(fun({SourceDir1, SourceExt1}, _) ->
+            run_(Config, FirstFiles, SourceDir1, SourceExt1, 
+                  TargetDir, TargetExt, Compile3Fn, Opts)
+        end, ok, [{D, E} || D <- ListDir, E <- ListExt]).
+
+run_(Config, FirstFiles, SourceDir, SourceExt, TargetDir, TargetExt,
+    Compile3Fn, Opts) ->
     %% Convert simple extension to proper regex
     SourceExtRe = "^[^._].*\\" ++ SourceExt ++ [$$],
 
@@ -264,3 +279,6 @@ maybe_absname(Config, Filename) ->
         false ->
             filename:absname(Filename)
     end.
+
+is_flat_list(List) -> 
+    lists:flatten(List) =:= List.
