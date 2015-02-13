@@ -138,6 +138,14 @@ analyze(Config, FilteredModules, SrcModules, TargetDir) ->
             print_coverage(lists:sort(Coverage));
         false ->
             ok
+    end,
+    
+    %% Generate JSON Coverage Data, if configured
+    case rebar_config:get(Config, cover_export_json, false) of
+        true ->
+            export_json_coverage(TargetDir,lists:sort(Coverage));
+        false ->
+            ok
     end.
 
 analyze_mod(Module) ->
@@ -242,6 +250,22 @@ print_coverage(Coverage) ->
                                    [Width, Mod, percentage(C, N)])
                   end, Coverage),
     ?CONSOLE("~n~*s : ~s~n", [Width, "Total", TotalCoverage]).
+
+export_json_coverage(TargetDir,Coverage) ->
+    ?CONSOLE("~nCode Coverage export to json~n", []),
+    {ok,JsonFile} = file:open(json_file(TargetDir),write),
+    Json = lists:foldl(fun({Module,Covered,NotCovered},[]) ->
+                               "{\"coverage\":[" ++ 
+                                   io_lib:format("~n  {\"module\":~p,\"covered\":~p,\"not_covered\":~p}",[atom_to_list(Module),Covered,NotCovered]);
+                          ({Module,Covered,NotCovered},JsonAcc) ->
+                               JsonAcc ++
+                                   io_lib:format(",~n  {\"module\":~p,\"covered\":~p,\"not_covered\":~p}",[atom_to_list(Module),Covered,NotCovered])
+                       end,[],Coverage),
+    io:format(JsonFile,"~s~n]}~n",[Json]),
+    file:close(JsonFile).
+
+json_file(TargetDir) ->
+    filename:join([TargetDir, "COVER.json"]).
 
 cover_file(Module, TargetDir) ->
     filename:join([TargetDir, atom_to_list(Module) ++ ".COVER.html"]).
