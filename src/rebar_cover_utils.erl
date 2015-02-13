@@ -253,19 +253,14 @@ print_coverage(Coverage) ->
 
 export_json_coverage(TargetDir,Coverage) ->
     ?CONSOLE("~nCode Coverage export to json~n", []),
-    {ok,JsonFile} = file:open(json_file(TargetDir),write),
-    Json = lists:foldl(fun({Module,Covered,NotCovered},[]) ->
-                               "{\"coverage\":[" ++ 
-                                   io_lib:format("~n  {\"module\":~p,\"covered\":~p,\"not_covered\":~p}",[atom_to_list(Module),Covered,NotCovered]);
-                          ({Module,Covered,NotCovered},JsonAcc) ->
-                               JsonAcc ++
-                                   io_lib:format(",~n  {\"module\":~p,\"covered\":~p,\"not_covered\":~p}",[atom_to_list(Module),Covered,NotCovered])
-                       end,[],Coverage),
-    io:format(JsonFile,"~s~n]}~n",[Json]),
-    file:close(JsonFile).
+    lists:foreach(fun({Module,Covered,NotCovered}) ->
+                          {ok,JsonFile} = file:open(json_file(TargetDir,Module)),
+                          io:format(JsonFile,"{\"module\":~p,\"covered\":~p,\"not_covered\":~p}",[atom_to_list(Module),Covered,NotCovered]),
+                          ok = file:close(JsonFile)
+                  end,Coverage).
 
-json_file(TargetDir) ->
-    filename:join([TargetDir, "COVER.json"]).
+json_file(TargetDir,Module) ->
+    filename:join([TargetDir, atom_to_list(Module) ++ ".COVER.json"]).
 
 cover_file(Module, TargetDir) ->
     filename:join([TargetDir, atom_to_list(Module) ++ ".COVER.html"]).
