@@ -278,7 +278,7 @@ format_error(AbsSource, Extra, {Mod, Desc}) ->
 maybe_absname(Config, Filename) ->
     case rebar_utils:processing_base_dir(Config) of
         true ->
-            Filename;
+            unit_source(Filename);
         false ->
-            filename:absname(Filename)
+            filename:absname(unit_source(Filename))
     end.
