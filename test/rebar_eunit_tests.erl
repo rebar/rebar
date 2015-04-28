@@ -294,6 +294,33 @@ cover_coverage_test_() ->
        %% needs to be decremented in this case.
        assert_full_coverage("myapp_mymod")}]}.
 
+exit_code_test_() ->
+    Setup = fun ( TestFailureIgnore ) ->
+                    fun() ->
+                            setup_project_with_multiple_modules(),
+                            TestFailureIgnore andalso
+                                enable_test_failure_ignore(),
+                            rebar("-v eunit suites=myapp_mymod3 "
+                                  ++ "tests=myapp_mymod:myprivate_test"
+                                  ++ "; echo -n $?" )
+                    end
+            end,
+    [{"Ensure test failure leads to abort",
+      setup,
+      Setup(false),
+      fun teardown/1,
+      fun(RebarOut) ->
+              [{"Failure not ignored",
+                [?_assertEqual($1, lists:last(RebarOut))]}]
+      end},
+     {"Ensure test failure is ignored when eunit_test_failure_ignore is set",
+      setup,
+      Setup(true),
+      fun teardown/1,
+      fun(RebarOut) ->
+              [{"Failure ignored", [?_assertEqual($0, lists:last(RebarOut))]}]
+      end}].
+
 %% ====================================================================
 %% Environment and Setup Tests
 %% ====================================================================
@@ -471,6 +498,9 @@ setup_cover_project_with_suite() ->
     ok = file:write_file("test/mysuite.erl", ?mysuite),
     ok = file:write_file("test/myapp_mymod_defined_in_mysuite_tests.erl",
                          ?myapp_mymod_defined_in_mysuite_tests).
+
+enable_test_failure_ignore() ->
+    ok = file:write_file("rebar.config", "{eunit_test_failure_ignore, true}.\n").
 
 teardown(_) ->
     ok = file:set_cwd(".."),

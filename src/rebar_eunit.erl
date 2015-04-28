@@ -119,6 +119,7 @@ info_help(Description) ->
        "  ~p~n"
        "  ~p~n"
        "  ~p~n"
+       "  ~p~n"
        "Valid command line options:~n"
        "  suite[s]=\"foo,bar\" (Run tests in foo.erl, test/foo_tests.erl and~n"
        "                    tests in bar.erl, test/bar_tests.erl)~n"
@@ -135,6 +136,7 @@ info_help(Description) ->
         {eunit_opts, []},
         {eunit_compile_opts, []},
         {eunit_first_files, []},
+        {eunit_test_failure_ignore, true},
         {cover_enabled, false},
         {cover_print_enabled, false},
         {cover_export_enabled, false}
@@ -187,8 +189,11 @@ run_eunit(Config, CodePath, SrcErls) ->
     case EunitResult of
         ok ->
             ok;
-        _ ->
-            ?ABORT("One or more eunit tests failed.~n", [])
+        error ->
+            test_failure_ignore(Config) orelse
+                ?ABORT("One or more eunit tests failed.~n", []);
+        Err ->
+            ?ABORT("~p.~n", [Err])
     end,
 
     %% Restore code path
@@ -212,6 +217,9 @@ setup_code_path() ->
     true = code:add_patha(eunit_dir()),
     true = code:add_pathz(rebar_utils:ebin_dir()),
     CodePath.
+
+test_failure_ignore(Config) ->
+    rebar_config:get(Config, eunit_test_failure_ignore, false).
 
 %%
 %% == get matching tests ==
