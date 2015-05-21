@@ -46,7 +46,7 @@
          escript_foldl/3,
          find_executable/1,
          prop_check/3,
-         expand_code_path/0,
+         expand_code_path/1,
          expand_env_variable/3,
          vcs_vsn/3,
          deprecated/3,
@@ -234,11 +234,23 @@ prop_check(true, _, _) -> true;
 prop_check(false, Msg, Args) -> ?ABORT(Msg, Args).
 
 %% Convert all the entries in the code path to absolute paths.
-expand_code_path() ->
-    CodePath = lists:foldl(fun(Path, Acc) ->
-                                   [filename:absname(Path) | Acc]
-                           end, [], code:get_path()),
-    code:set_path(lists:reverse(CodePath)).
+expand_code_path(Config) ->
+    %% Converted paths are cached to avoid needlessly calling
+    %% filename:absname/1.
+    Set = lists:foldl(
+            fun(Path, S) ->
+                    case ordsets:is_element(Path, S) of
+                        true ->
+                            S;
+                        false ->
+                            AbsPath = filename:absname(Path),
+                            ordsets:add_element(AbsPath, S)
+                    end
+            end,
+            rebar_config:get_xconf(Config, code_path_set, ordsets:new()),
+            code:get_path()),
+    true = code:set_path(ordsets:to_list(Set)),
+    rebar_config:set_xconf(Config, code_path_set, Set).
 
 %%
 %% Given env. variable FOO we want to expand all references to
