@@ -279,7 +279,10 @@ info_help(Description) ->
           {app_name, ".*", {bzr, "https://www.example.org/url", "Rev"}},
           {app_name, ".*", {fossil, "https://www.example.org/url"}},
           {app_name, ".*", {fossil, "https://www.example.org/url", "Vsn"}},
-          {app_name, ".*", {p4, "//depot/subdir/app_dir"}}]}
+          {app_name, ".*", {p4, "//depot/subdir/app_dir"}},
+          {app_name, ".*", {targz, "https://www.example.org/tarball.tar.gz"}},
+          {app_name, ".*", {tarbz2, "https://www.example.org/tarball.tar.bz2"}},
+          {app_name, ".*", {tarxz, "https://www.example.org/tarball.tar.xz"}}]}
        ]).
 
 %% Added because of trans deps,
@@ -601,7 +604,21 @@ download_source(AppDir, {fossil, Url, Version}) ->
     rebar_utils:sh(?FMT("fossil clone ~s ~s", [Url, Repository]),
                    [{cd, AppDir}]),
     rebar_utils:sh(?FMT("fossil open ~s ~s --nested", [Repository, Version]),
-                   []).
+                   []);
+download_source(AppDir, {TarFormat, Url}) when TarFormat == targz;
+                                               TarFormat == tarbz2;
+                                               TarFormat == tarxz ->
+    {ok, TmpDir} = rebar_file_utils:insecure_mkdtemp(),
+    TarBall = filename:join([TmpDir, "tarball"]),
+    ok = rebar_file_utils:download(Url, TarBall),
+    DepsDir = filename:dirname(AppDir),
+    TarOption = case TarFormat of
+                    targz -> "z";
+                    tarbz2 -> "j";
+                    tarxz -> "J"
+                end,
+    rebar_utils:sh(?FMT("tar ~sxf ~s", [TarOption, TarBall]), [{cd, DepsDir}]),
+    rebar_file_utils:rm_rf(TmpDir).
 
 update_source(Config, Dep) ->
     %% It's possible when updating a source, that a given dep does not have a
@@ -654,7 +671,17 @@ update_source1(AppDir, {fossil, Url}) ->
 update_source1(AppDir, {fossil, _Url, Version}) ->
     ok = file:set_cwd(AppDir),
     rebar_utils:sh("fossil pull", [{cd, AppDir}]),
-    rebar_utils:sh(?FMT("fossil update ~s", [Version]), []).
+    rebar_utils:sh(?FMT("fossil update ~s", [Version]), []);
+update_source1(AppDir, {Type, _Url} = Repository) when Type == targz;
+                                                       Type == tarbz2;
+                                                       Type == tarxz ->
+    case filelib:is_dir(AppDir) of
+        true ->
+            rebar_file_utils:rm_rf(AppDir);
+        false ->
+            ok
+    end,
+    download_source(AppDir, Repository).
 
 %% Recursively update deps, this is not done via rebar's usual dep traversal as
 %% that is the wrong order (tips are updated before branches). Instead we do a
@@ -753,7 +780,10 @@ source_engine_avail(Name, Source)
         false ->
             ?ABORT("Rebar requires version ~p or higher of ~s to process ~p\n",
                    [required_vcs_client_vsn(Name), Name, Source])
-    end.
+    end;
+source_engine_avail(Name, _Source)
+  when Name == targz; Name == tarbz2; Name == tarxz ->
+    true.
 
 vcs_client_vsn(false, _VsnArg, _VsnRegex) ->
     false;

@@ -30,7 +30,9 @@
          cp_r/2,
          mv/2,
          delete_each/1,
-         write_file_if_contents_differ/2]).
+         write_file_if_contents_differ/2,
+         insecure_mkdtemp/0,
+         download/2]).
 
 -include("rebar.hrl").
 
@@ -123,6 +125,45 @@ write_file_if_contents_differ(Filename, Bytes) ->
             file:write_file(Filename, ToWrite)
     end.
 
+%% @doc make a unique temporary directory. Similar function to BSD stdlib
+%% function of the same name.
+-spec insecure_mkdtemp() -> {ok, TmpDirPath::file:name()} | {error, Reason::term()}.
+insecure_mkdtemp() ->
+    random:seed(now()),
+    UniqueNumber = erlang:integer_to_list(erlang:trunc(random:uniform() * 1000000000000)),
+    TmpDirPath =
+        filename:join([tmp(), lists:flatten([".tmp_dir", UniqueNumber])]),
+
+    case mkdir_path(TmpDirPath) of
+        ok -> {ok, TmpDirPath};
+        Error -> Error
+    end.
+
+%% @doc Makes a directory including parent dirs if they are missing.
+-spec mkdir_path(file:name()) -> ok | {error, Reason::term()}.
+mkdir_path(Path) ->
+    %% We are exploiting a feature of ensuredir that that creates all
+    %% directories up to the last element in the filename, then ignores
+    %% that last element. This way we ensure that the dir is created
+    %% and not have any worries about path names
+    DirName = filename:join([filename:absname(Path), "tmp"]),
+    filelib:ensure_dir(DirName).
+
+%% @doc Download a file by HTTP GET
+-spec download(httpc:url(), file:name()) -> ok | false.
+download(Url, File) ->
+    configure_http(),
+    HttpOpts = [{autoredirect, true}, {timeout, 30000}],
+    Opts = [{stream, File}],
+
+    case httpc:request(get, {Url, []}, HttpOpts, Opts) of
+        {ok, saved_to_file} -> ok;
+        {ok, {{_, _Code, _}, _, _}} -> false;
+        {ok, {_Code, _}} -> false;
+        _ -> false
+    end.
+
+
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
@@ -192,3 +233,26 @@ cp_r_win32(Source,Dest) ->
 
 escape_path(Str) ->
     re:replace(Str, "([ ()?])", "\\\\&", [global, {return, list}]).
+
+
+-spec tmp() -> file:name().
+tmp() ->
+    case erlang:system_info(system_architecture) of
+        "win32" ->
+            "./tmp";
+        _SysArch ->
+            "/tmp"
+    end.
+
+configure_http() ->
+    application:start(crypto),
+    application:start(public_key),
+    application:start(ssl),
+    application:start(inets),
+
+    case os:getenv("http_proxy") of
+        "http://" ++ Proxy ->
+            [Host, Port] = string:tokens(Proxy, ":"),
+            httpc:set_options([{proxy, {Host,Port}}]);
+        _ -> ok
+    end.

@@ -52,7 +52,10 @@
                   compiler,
                   crypto,
                   syntax_tools,
-                  tools]},
+                  tools,
+                  public_key,
+                  ssl,
+                  inets]},
   {env, [
          %% Default log level
          {log_level, warn},
