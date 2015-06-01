@@ -403,7 +403,15 @@ patch_env(Config, [E | Rest]) ->
 %% ====================================================================
 
 otp_release() ->
-    otp_release1(erlang:system_info(otp_release)).
+    case application:get_env(rebar, cached_otp_release) of
+        undefined ->
+            Vsn = otp_release1(erlang:system_info(otp_release)),
+            application:set_env(rebar, cached_otp_release, Vsn),
+            Vsn;
+        {ok, Vsn} ->
+            Vsn
+   end.
+
 
 %% If OTP <= R16, otp_release is already what we want.
 otp_release1([$R,N|_]=Rel) when is_integer(N) ->
@@ -411,38 +419,103 @@ otp_release1([$R,N|_]=Rel) when is_integer(N) ->
 %% If OTP >= 17.x, erlang:system_info(otp_release) returns just the
 %% major version number, we have to read the full version from
 %% a file. See http://www.erlang.org/doc/system_principles/versions.html
+%% If this file doesn't exist (which it likely won't when being run from a
+%% reltool-generated release), then we infer the OTP release from versions
+%% of built-in Erlang applications.
+otp_release1(Rel) ->
+    case determine_otp_release_from_files(Rel) of
+        undefined ->
+            Vsn = guess_otp_release(Rel),
+            ?WARN("Cannot find OTP_VERSION File. Inferred ~s~n", [Vsn]),
+            Vsn;
+        Vsn ->
+            Vsn
+    end.
+
 %% Read vsn string from the 'OTP_VERSION' file and return as list without
 %% the "\n".
-otp_release1(Rel) ->
-    File = filename:join([code:root_dir(), "releases", Rel, "OTP_VERSION"]),
-    Vsn = case file:read_file(File) of
-              {ok, V} -> V;
-              {error, enoent} ->
-                  FileNotInstalled = filename:join([code:root_dir(),
-                                                    "OTP_VERSION"]),
-                  {ok, V} = file:read_file(FileNotInstalled),
-                  V
-          end,
-    %% It's fine to rely on the binary module here because we can
-    %% be sure that it's available when the otp_release string does
-    %% not begin with $R.
-    Size = byte_size(Vsn),
-    %% The shortest vsn string consists of at least two digits
-    %% followed by "\n". Therefore, it's safe to assume Size >= 3.
-    case binary:part(Vsn, {Size, -3}) of
-        <<"**\n">> ->
-            %% The OTP documentation mentions that a system patched
-            %% using the otp_patch_apply tool available to licensed
-            %% customers will leave a '**' suffix in the version as a
-            %% flag saying the system consists of application versions
-            %% from multiple OTP versions. We ignore this flag and
-            %% drop the suffix, given for all intents and purposes, we
-            %% cannot obtain relevant information from it as far as
-            %% tooling is concerned.
-            binary:bin_to_list(Vsn, {0, Size - 3});
-        _ ->
-            binary:bin_to_list(Vsn, {0, Size - 1})
+determine_otp_release_from_files(Rel) ->
+    Files = [
+             %% The Erlang installation should have an OTP_VERSION file.
+             %% reltool-built releases will not. 
+             %% (See http://www.erlang.org/doc/system_principles/versions.html)
+             filename:join([code:root_dir(), "releases", Rel, "OTP_VERSION"]),
+             %% IF someone is building Erlang from sources without making a
+             %% proper release, the OTP_VERSION file may exist in the root
+             %% directory. 
+             %% (See https://github.com/rebar/rebar/pull/499)
+             filename:join([code:root_dir(), "OTP_VERSION"])
+            ],
+
+    case try_otp_release_files(Files) of
+        undefined ->
+            undefined;
+        Vsn ->
+            %% It's fine to rely on the binary module here because we can
+            %% be sure that it's available when the otp_release string does
+            %% not begin with $R.
+            Size = byte_size(Vsn),
+            %% The shortest vsn string consists of at least two digits
+            %% followed by "\n". Therefore, it's safe to assume Size >= 3.
+            case binary:part(Vsn, {Size, -3}) of
+                <<"**\n">> ->
+                    %% The OTP documentation mentions that a system patched
+                    %% using the otp_patch_apply tool available to licensed
+                    %% customers will leave a '**' suffix in the version as a
+                    %% flag saying the system consists of application versions
+                    %% from multiple OTP versions. We ignore this flag and
+                    %% drop the suffix, given for all intents and purposes, we
+                    %% cannot obtain relevant information from it as far as
+                    %% tooling is concerned.
+                    binary:bin_to_list(Vsn, {0, Size - 3});
+                _ ->
+                    binary:bin_to_list(Vsn, {0, Size - 1})
+            end
     end.
+
+try_otp_release_files([]) ->
+    undefined;
+try_otp_release_files([File | Rest]) ->
+    case file:read_file(File) of
+        {ok, V} -> V;
+        {error, enoent} -> try_otp_release_files(Rest)
+    end.
+
+guess_otp_release(Rel) ->
+    VsnMap = app_version_otp_release_map(), 
+    guess_otp_release(Rel, VsnMap).
+
+%% If we can't find a matching version, we just return the major release
+%% version (e.g. "17")
+guess_otp_release(Rel, []) ->
+    Rel;
+guess_otp_release(Rel, [{App, AppVsn, OTPVsn} | Map]) ->
+    case get_app_version(App) == AppVsn of
+        true ->
+            OTPVsn;
+        false -> 
+            guess_otp_release(Rel, Map)
+    end.
+
+%% A list containing the a simple naive mapping from the version of an application to 
+app_version_otp_release_map() ->
+    [
+    % App       AppVsn  OTPVsn
+     {erts,     "6.4",  "17.5"},
+     {erts,     "6.3",  "17.4"},
+     {erts,     "6.2",  "17.3"},
+     {erts,     "6.1",  "17.1"},
+     {erts,     "6.0",  "17.0"}
+    ].
+
+get_app_version(App) ->
+    application:load(App),
+    Apps = application:loaded_applications(),
+    case lists:keyfind(App, 1, Apps) of
+        {_, _, Vsn} -> Vsn;
+        false -> undefined
+    end.
+
 
 get_deprecated_3(Get, Config, OldOpt, NewOpt, Default, When) ->
     case Get(Config, NewOpt, Default) of
