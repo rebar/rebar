@@ -29,6 +29,8 @@
 -export([process_commands/2,
          help/2]).
 
+-export([execute_pre/5, execute_post/5, apply_hooks/4]).
+
 -include("rebar.hrl").
 
 %% ===================================================================
