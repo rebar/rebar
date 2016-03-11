@@ -56,7 +56,7 @@ eunit_test_() ->
                ?_assert(string:str(RebarOut, "myapp_mymod:") =/= 0)},
 
               {"Tests are only run once",
-               ?_assert(string:str(RebarOut, "All 2 tests passed") =/= 0)}]
+               ?_assert(string:str(RebarOut, "2 tests passed") =/= 0)}]
      end}.
 
 eunit_with_suites_and_tests_test_() ->
@@ -102,7 +102,7 @@ eunit_with_suites_and_tests_test_() ->
                 ?_assert(string:str(RebarOut, "myapp_mymod:") =:= 0)},
 
                {"Selected suite tests are only run once",
-                ?_assert(string:str(RebarOut, "All 2 tests passed") =/= 0)}]
+                ?_assert(string:str(RebarOut, "2 tests passed") =/= 0)}]
       end},
      {"Ensure EUnit runs a specific test defined in a selected suite",
       setup, fun() ->
@@ -190,7 +190,7 @@ eunit_with_suites_and_tests_test_() ->
                           =/= 0)]},
 
                {"Selected suite tests is run once",
-                ?_assert(string:str(RebarOut, "All 2 tests passed") =/= 0)}]
+                ?_assert(string:str(RebarOut, "2 tests passed") =/= 0)}]
       end},
      {"Ensure EUnit runs a specific test by qualified function name",
       setup,
