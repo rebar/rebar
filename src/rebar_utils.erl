@@ -821,9 +821,9 @@ windows_temp_dir() ->
     end.
 
 rebar_now() ->
-    case erlang:function_exported(erlang, timestamp, 0) of
+    case erlang:function_exported(os, timestamp, 0) of
         true ->
-            erlang:timestamp();
+            os:timestamp();
         false ->
             %% erlang:now/0 was deprecated in 18.0. One solution to avoid the
             %% deprecation warning is to use
