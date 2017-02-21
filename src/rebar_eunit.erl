@@ -54,8 +54,8 @@
 %%   </li>
 %%   <li>
 %%      tests="baz"- For every existing suite, run the first test whose
-%%      name starts with bar and, if no such test exists, run the test
-%%      whose name starts with bar in the suite's _tests module
+%%      name starts with baz and, if no such test exists, run the test
+%%      whose name starts with baz in the suite's _tests module
 %%   </li>
 %% </ul>
 %% Additionally, for projects that have separate folders for the core
