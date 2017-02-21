@@ -326,9 +326,8 @@ save_options(Config, {Options, NonOptArgs}) ->
     Config3 = rebar_config:set_xconf(Config2, keep_going,
                                      proplists:get_bool(keep_going, Options)),
 
-    %% Setup flag to enable recursive application of commands
-    Config4 = rebar_config:set_xconf(Config3, recursive,
-                                     proplists:get_bool(recursive, Options)),
+    %% Configure recursive behavior
+    Config4 = configure_recursion(Config3, Options),
 
     %% Set global variables based on getopt options
     Config5 = set_global_flag(Config4, Options, force),
@@ -637,3 +636,25 @@ is_command_name_sub_word_candidate_aux([], []) ->
     true;
 is_command_name_sub_word_candidate_aux(_CmdSWs, _CandSWs) ->
     false.
+
+configure_recursion(Config, Options) ->
+    %% The environment variable REBAR_NON_RECURSIVE_CMDS can be used
+    %% to pass in a comma separated list of commands to remove from
+    %% the built-in list of recursive commands. Commands ending with
+    %% *-deps are ignored.
+    maybe_override_recursive_cmds(),
+    %% Setup flag to enable recursive application of commands
+    rebar_config:set_xconf(Config, recursive,
+                           proplists:get_bool(recursive, Options)).
+
+maybe_override_recursive_cmds() ->
+    maybe_override_recursive_cmds(os:getenv("REBAR_NON_RECURSIVE_CMDS")).
+
+maybe_override_recursive_cmds(false) ->
+    ok;
+maybe_override_recursive_cmds(RawCmds) ->
+    Cmds = [list_to_atom(C) || C <- string:tokens(RawCmds, ","),
+                               not lists:suffix("-deps", C)],
+    {ok, OldCmds} = application:get_env(rebar, recursive_cmds),
+    NewCmds = OldCmds -- Cmds,
+    ok = application:set_env(rebar, recursive_cmds, NewCmds).
