@@ -692,12 +692,89 @@ update_source1(AppDir, {fossil, _Url, Version}) ->
     rebar_utils:sh("fossil pull", [{cd, AppDir}]),
     rebar_utils:sh(?FMT("fossil update ~s", [Version]), []).
 
+
+%% Conflict resolution
+format_dep({root, root}) ->
+    "root rebar.config";
+format_dep({_Name, Dep}) ->
+    Vsn =
+        case Dep#dep.source of
+            {git, _, {_, V}} -> V;
+            {_, _, V} -> V;
+            _ -> "unknown"
+        end,
+    ?FMT("~p [~s]", [Dep#dep.app, Vsn]).
+
+format_path(Graph, Path) ->
+    PathMap = [format_dep(digraph:vertex(Graph, V)) || V <- Path],
+    string:join(PathMap, " -> ").
+
+format_path(Graph, Path, LastDep) ->
+    PathMap = [format_dep(digraph:vertex(Graph, V)) || V <- Path],
+    string:join(PathMap ++ [format_dep({current, LastDep})], " -> ").
+
+print_formatted_conflict(Graph, Parent, Dep) ->
+    Path1 = format_path(Graph, digraph:get_path(Graph, root, Dep#dep.app)),
+    Path2 = format_path(Graph, digraph:get_path(Graph, root, Parent), Dep),
+    ?ERROR("Dependency conflict ~n~s~n~s~n", [Path1, Path2]).
+print_formatted_skip_warning(Parent, Dep) ->
+    FormattedDep = format_dep({ok, Dep}),
+    ?WARN("Skip dependency ~s (from ~p) and all its subdependencies~n",
+          [FormattedDep, Parent]).
+print_formatted_resolver(Graph, PathToDep, Dep) ->
+    T = lists:nth(length(PathToDep)-1, PathToDep),
+    ResolverVertex = digraph:vertex(Graph, T),
+    ResolverName = format_dep(ResolverVertex),
+    RealVsnVertex = digraph:vertex(Graph, Dep#dep.app),
+    RealVersion = format_dep(RealVsnVertex),
+    ?WARN("Resolved in ~s => ~s~n", [ResolverName, RealVersion]).
+
+is_resolved_conflict(Graph, Parent, Dep) ->
+    %% Currently always returns false
+    %% TODO: add vsn check
+    PathToDep = digraph:get_path(Graph, root, Dep#dep.app),
+    PathToParent = digraph:get_path(Graph, root, Parent),
+    {DepHead, _} = lists:split(length(PathToDep) - 1, PathToDep),
+    case length(DepHead) > length(PathToParent) of
+        true ->
+            print_formatted_conflict(Graph, Parent, Dep),
+            false;
+        false ->
+            {ParentHead, _} = lists:split(length(DepHead), PathToParent),
+            case ParentHead of
+                DepHead ->
+                    %% resolved conflict
+                    print_formatted_skip_warning(Parent, Dep),
+                    print_formatted_resolver(Graph, PathToDep, Dep),
+                    false;
+                _ ->
+                    print_formatted_conflict(Graph, Parent, Dep),
+                    false
+            end
+    end.
+
+should_update(Graph, Parent, Dep) ->
+    case digraph:get_path(Graph, root, Dep#dep.app) of
+        false ->
+            digraph:add_vertex(Graph, Dep#dep.app, Dep),
+            digraph:add_edge(Graph, Parent, Dep#dep.app),
+            true;
+        _ ->
+            %% we have this depenency, so check for conflict
+            is_resolved_conflict(Graph, Parent, Dep)
+    end.
+
 %% Recursively update deps, this is not done via rebar's usual dep traversal as
 %% that is the wrong order (tips are updated before branches). Instead we do a
 %% traverse the deps at each level completely before traversing *their* deps.
 %% This allows updates to actually propogate down the tree, rather than fail to
 %% flow up the tree, which was the previous behaviour.
 update_deps_int(Config0, UDD) ->
+    Graph = digraph:new(),
+    digraph:add_vertex(Graph, root, root),
+    update_deps_int(Config0, UDD, Graph, root).
+
+update_deps_int(Config0, UDD, Graph, Parent) ->
     %% Determine what deps are required
     ConfDir = filename:basename(rebar_utils:get_cwd()),
     RawDeps = rebar_config:get_local(Config0, deps, []),
@@ -707,7 +784,8 @@ update_deps_int(Config0, UDD) ->
     UpdatedDeps = [update_source(Config1, D)
                    || D <- Deps, D#dep.source =/= undefined,
                       not lists:member(D, UDD),
-                      not should_skip_update_dep(Config1, D)
+                      not should_skip_update_dep(Config1, D),
+                      should_update(Graph, Parent, D)
                   ],
 
     lists:foldl(fun(Dep, {Config, Updated}) ->
@@ -733,8 +811,8 @@ update_deps_int(Config0, UDD) ->
                                                             dict:new())),
                         Config4 = rebar_config:set_xconf(Config3, depowner,
                                                          DepOwner),
-
-                        {Config5, Res} = update_deps_int(Config4, Updated),
+                        {Config5, Res} = update_deps_int(Config4, Updated,
+                                                         Graph, Dep#dep.app),
                         {Config5, lists:umerge(lists:sort(Res),
                                                lists:sort(Updated))}
                 end, {Config1, lists:umerge(lists:sort(UpdatedDeps),
