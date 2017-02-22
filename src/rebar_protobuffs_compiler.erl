@@ -107,7 +107,8 @@ compile_each(Config, [{Proto, Beam, Hrl} | Rest]) ->
     case needs_compile(Proto, Beam) of
         true ->
             ?CONSOLE("Compiling ~s\n", [Proto]),
-            ErlOpts = rebar_utils:erl_opts(Config),
+            ErlOpts = lists:delete(warnings_as_errors,
+                                   rebar_utils:erl_opts(Config)),
             case protobuffs_compile:scan_file(Proto,
                                               [{compile_flags,ErlOpts}]) of
                 ok ->
