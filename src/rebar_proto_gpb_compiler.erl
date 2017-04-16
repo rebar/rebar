@@ -110,7 +110,8 @@ compile_gpb(Source, _Target, Config) ->
             ReasonStr = gpb_compile:format_error(Reason),
             ?ERROR("Failed to compile ~s: ~s~n", [SourceFullPath, ReasonStr]),
             ?FAIL
-    end.
+    end,
+    ?CONSOLE("Compiled ~s\n", [Source]).
 
 default_include_opts(SourceFullPath) ->
     [{i,filename:dirname(SourceFullPath)}].
