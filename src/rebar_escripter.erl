@@ -73,7 +73,7 @@ escriptize(Config0, AppFile) ->
             Shebang = rebar_config:get(Config, escript_shebang,
                                        "#!/usr/bin/env escript\n"),
             Comment = rebar_config:get(Config, escript_comment, "%%\n"),
-            DefaultEmuArgs = ?FMT("%%! -pa ~s/~s/ebin\n",
+            DefaultEmuArgs = ?FMT("%%! -pa ~s/~s/ebin -boot start_clean\n",
                                   [AppNameStr, AppNameStr]),
             EmuArgs = rebar_config:get(Config, escript_emu_args,
                                        DefaultEmuArgs),
