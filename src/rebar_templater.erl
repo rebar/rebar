@@ -87,7 +87,13 @@ create(Config, _) ->
 resolve_variables([], Dict) ->
     Dict;
 resolve_variables([{Key, Value0} | Rest], Dict) when is_list(Value0) ->
-    Value = render(list_to_binary(Value0), Dict),
+    Value1 = case rebar_utils:otp_release() of
+        [$R|_] ->
+            list_to_binary(Value0);
+        _ ->
+            unicode:characters_to_binary(Value0)
+    end,
+    Value = render(Value1, Dict),
     resolve_variables(Rest, dict:store(Key, Value, Dict));
 resolve_variables([{Key, {list, Dicts}} | Rest], Dict) when is_list(Dicts) ->
     %% just un-tag it so mustache can use it
