@@ -331,18 +331,15 @@ get_cover_config(Config, Cwd) ->
 
 collect_glob(Config, Cwd, Glob) ->
     {true, Deps} = rebar_deps:get_deps_dir(Config),
-    DepsDir = filename:basename(Deps),
-    CwdParts = filename:split(Cwd),
+    DepsAbs = filename:absname(Deps),
     filelib:fold_files(
       Cwd,
       Glob,
       true,
       fun(F, Acc) ->
-              %% Ignore any specs under the deps/ directory. Do this pulling
-              %% the dirname off the F and then splitting it into a list.
-              Parts = filename:split(filename:dirname(F)),
-              Parts2 = remove_common_prefix(Parts, CwdParts),
-              case lists:member(DepsDir, Parts2) of
+              %% Ignore any specs under the deps/ directory.
+              SpecDir = filename:absname(filename:dirname(F)),
+              case lists:prefix(DepsAbs, SpecDir) of
                   true ->
                       %% There is a directory named "deps" in path
                       Acc;
@@ -352,11 +349,6 @@ collect_glob(Config, Cwd, Glob) ->
               end
       end,
       []).
-
-remove_common_prefix([H1|T1], [H1|T2]) ->
-    remove_common_prefix(T1, T2);
-remove_common_prefix(L1, _) ->
-    L1.
 
 get_ct_config_file(TestDir) ->
     Config = filename:join(TestDir, "test.config"),
