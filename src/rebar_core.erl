@@ -190,8 +190,8 @@ skip_or_process_dir(Dir, Command, Config, DirSet, CurrentCodePath,
                  WouldCd);
 skip_or_process_dir(Dir, Command, Config, DirSet, CurrentCodePath,
                     {_, File}=ModuleSet, WouldCd) ->
-    case lists:suffix(".app.src", File)
-        orelse lists:suffix(".app", File) of
+    case lists:suffix(".app", File)
+        orelse rebar_app_utils:is_app_src(File) of
         true ->
             %% .app or .app.src file, check if is_skipped_app
             skip_or_process_dir1(Dir, Command, Config, DirSet, CurrentCodePath,
