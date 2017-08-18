@@ -288,7 +288,7 @@ search_ct_specs_from(Cwd, TestDir, Config) ->
 build_name(Config) ->
     %% generate a unique name for our test node, we want
     %% to make sure the odds of name clashing are low
-    Random = integer_to_list(crypto:rand_uniform(0, 10000)),
+    Random = integer_to_list(rebar_rnd:uniform(10000)),
     case rebar_config:get_local(Config, ct_use_short_names, false) of
         true -> "-sname test" ++ Random;
         false -> " -name test" ++ Random ++ "@" ++ net_adm:localhost()
