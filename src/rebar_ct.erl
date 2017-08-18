@@ -237,6 +237,7 @@ make_cmd(TestDir, RawLogDir, Config) ->
     CodeDirs = [io_lib:format("\"~s\"", [Dir]) ||
                    Dir <- [EbinDir|NonLibCodeDirs]],
     CodePathString = string:join(CodeDirs, " "),
+    _ = rebar_rnd:seed({55, seconds(), 7331}),
     Cmd = case get_ct_specs(Config, search_ct_specs_from(Cwd, TestDir, Config)) of
               undefined ->
                   ?FMT("~s"
@@ -285,13 +286,18 @@ search_ct_specs_from(Cwd, TestDir, Config) ->
           Cwd
     end.
 
+seconds() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
 build_name(Config) ->
     %% generate a unique name for our test node, we want
     %% to make sure the odds of name clashing are low
-    Random = integer_to_list(rebar_rnd:uniform(10000)),
+    Secs = integer_to_list(seconds()),
+    Random = integer_to_list(rebar_rnd:uniform(1000000)),
+    PseudoUnique = Random ++ "N" ++ Secs,
     case rebar_config:get_local(Config, ct_use_short_names, false) of
-        true -> "-sname test" ++ Random;
-        false -> " -name test" ++ Random ++ "@" ++ net_adm:localhost()
+        true -> "-sname test" ++ PseudoUnique;
+        false -> " -name test" ++ PseudoUnique ++ "@" ++ net_adm:localhost()
     end.
 
 get_extra_params(Config) ->
