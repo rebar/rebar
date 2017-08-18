@@ -30,8 +30,6 @@
 %% -------------------------------------------------------------------
 -module(rebar_utils_tests).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 expand_env_variable_test_() ->
