@@ -2,8 +2,6 @@
 %% ex: ts=4 sw=4 et
 -module(rebar_require_vsn_tests).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 version_tuple_test_() ->

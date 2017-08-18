@@ -30,8 +30,6 @@
 %% -------------------------------------------------------------------
 -module(rebar_eunit_tests).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 %% Assuming this test is run inside the rebar 'eunit'
@@ -412,7 +410,6 @@ code_path_test_() ->
 
 -define(myapp_mymod_tests,
         ["-module(myapp_mymod_tests).\n",
-         "-compile([export_all]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "myfunc_test() -> ?assertMatch(ok, myapp_mymod:myfunc()).\n"]).
 
@@ -426,7 +423,6 @@ code_path_test_() ->
 
 -define(myapp_mymod2_tests,
         ["-module(myapp_mymod2_tests).\n",
-         "-compile([export_all]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "myfunc2_test() -> ?assertMatch(ok, myapp_mymod2:myfunc2()).\n",
          "common_name_test() -> ?assert(true).\n"]).
@@ -459,7 +455,6 @@ code_path_test_() ->
 
 -define(myapp_mymod_defined_in_mysuite_tests,
         ["-module(myapp_mymod_defined_in_mysuite_tests).\n",
-         "-compile([export_all]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "myfunc_test() -> ?assertMatch(ok, myapp_mymod:myfunc()).\n"]).
 
@@ -536,9 +531,6 @@ prepare_rebar_script() ->
             {ok, _} = file:copy(?REBAR_SCRIPT ++ ".cmd",
                                 ?TMP_DIR ++ "rebar.cmd")
     end.
-
-rebar() ->
-    rebar([]).
 
 rebar(Args) when is_list(Args) ->
     Out = os:cmd(filename:nativename("./rebar") ++ " " ++ Args),

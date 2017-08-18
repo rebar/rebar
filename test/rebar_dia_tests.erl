@@ -2,8 +2,6 @@
 %% ex: ts=4 sw=4 et
 -module(rebar_dia_tests).
 
--compile([export_all]).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -define(REBAR_SCRIPT, "../rebar").
@@ -12,7 +10,7 @@
 
 dia_test_() ->
     case supported_otp_version() of
-        true -> 
+        true ->
             {"Test the dia compiler",
              setup, fun() -> setup_project(), rebar("compile") end,
              fun teardown/1,
@@ -22,7 +20,7 @@ dia_test_() ->
 
                   {"Check include is created",
                    ?_assert(filelib:is_dir("include") =:= true)},
-                  
+
                   {"Check dia/a.dia is compiled",
                    ?_assert(string:str(RebarOut, "Compiled dia/a.dia") /= 0)},
 
@@ -62,7 +60,7 @@ dia_test_() ->
 
 supported_otp_version() ->
     Min = rebar_require_vsn:version_tuple(keep_going, "15", "configured"),
-    Otp = rebar_require_vsn:version_tuple(keep_going, 
+    Otp = rebar_require_vsn:version_tuple(keep_going,
                                           erlang:system_info(otp_release),
                                           "OTP Release"),
     Otp >= Min.
@@ -108,9 +106,5 @@ prepare_rebar_script() ->
                                 ?TMP_DIR ++ "rebar.cmd")
     end.
 
-rebar() ->
-    rebar([]).
-
 rebar(Args) when is_list(Args) ->
-    Out = os:cmd(filename:nativename("./rebar") ++ " " ++ Args),
-    Out.
+    os:cmd(filename:nativename("./rebar") ++ " " ++ Args).

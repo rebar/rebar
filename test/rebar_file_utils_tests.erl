@@ -30,8 +30,6 @@
 %% -------------------------------------------------------------------
 -module(rebar_file_utils_tests).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -define(TMP_DIR, "tmp_file_utils").

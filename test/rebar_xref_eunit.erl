@@ -2,8 +2,6 @@
 %% ex: ts=4 sw=4 et
 -module(rebar_xref_eunit).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -define(REBAR_SCRIPT, "../rebar").
@@ -16,31 +14,31 @@ xref_test_() ->
      fun teardown/1,
      fun(RebarOut) ->
              [
-              {"Undefined function", ?_assert(string:str(RebarOut, 
+              {"Undefined function", ?_assert(string:str(RebarOut,
                 "myapp_somemod:notavailable/1 is undefined function") =/= 0)},
-              {"Undefined function call", ?_assert(string:str(RebarOut, 
+              {"Undefined function call", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 calls undefined function myapp_somemod:notavailable/1") =/= 0)},
-              {"Deprecated function", ?_assert(string:str(RebarOut, 
+              {"Deprecated function", ?_assert(string:str(RebarOut,
                 "myapp_mymod:fdeprecated/0 is deprecated function") =/= 0)},
-              {"Deprecated function call", ?_assert(string:str(RebarOut, 
+              {"Deprecated function call", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 calls deprecated function myapp_mymod:fdeprecated/0") =/= 0)},
-              {"Unused local", ?_assert(string:str(RebarOut, 
+              {"Unused local", ?_assert(string:str(RebarOut,
                 "myapp_mymod:localfunc2/0 is unused local function") =/= 0)},
-              {"Unused export 1", ?_assert(string:str(RebarOut, 
+              {"Unused export 1", ?_assert(string:str(RebarOut,
                 "myapp_behaviour1:behaviour_info/1 is unused export") =/= 0)},
-              {"Unused export 2", ?_assert(string:str(RebarOut, 
+              {"Unused export 2", ?_assert(string:str(RebarOut,
                 "myapp_behaviour2:behaviour_info/1 is unused export") =/= 0)},
-              {"Unused export 3", ?_assert(string:str(RebarOut, 
+              {"Unused export 3", ?_assert(string:str(RebarOut,
                 "myapp_mymod:other2/1 is unused export") =/= 0)},
-              {"Unused export 4", ?_assert(string:str(RebarOut, 
+              {"Unused export 4", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 is unused export") =/= 0)},
-              {"Suppressed behaviour export 1", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 1", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh1_a/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 2", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 2", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh1_b/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 3", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 3", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh2_a/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 4", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 4", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh2_b/1 is unused export") =:= 0)}
             ]
      end}.
@@ -51,31 +49,31 @@ xref_ignore_test_() ->
      fun teardown/1,
      fun(RebarOut) ->
              [
-              {"Undefined function can not be suppressed.", ?_assert(string:str(RebarOut, 
+              {"Undefined function can not be suppressed.", ?_assert(string:str(RebarOut,
                 "myapp_somemod:notavailable/1 is undefined function") =/= 0)},
-              {"Supppressed undefined function call", ?_assert(string:str(RebarOut, 
+              {"Supppressed undefined function call", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 calls undefined function myapp_somemod:notavailable/1") =:= 0)},
-              {"Supppressed deprecated function", ?_assert(string:str(RebarOut, 
+              {"Supppressed deprecated function", ?_assert(string:str(RebarOut,
                 "myapp_mymod:fdeprecated/0 is deprecated function") =:= 0)},
-              {"Supppressed deprecated function call", ?_assert(string:str(RebarOut, 
+              {"Supppressed deprecated function call", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 calls deprecated function myapp_mymod:fdeprecated/0") =:= 0)},
-              {"Supppressed unused local", ?_assert(string:str(RebarOut, 
+              {"Supppressed unused local", ?_assert(string:str(RebarOut,
                 "myapp_mymod:localfunc2/0 is unused local function") =:= 0)},
-              {"Supppressed unused export 1", ?_assert(string:str(RebarOut, 
+              {"Supppressed unused export 1", ?_assert(string:str(RebarOut,
                 "myapp_behaviour1:behaviour_info/1 is unused export") =:= 0)},
-              {"Supppressed unused export 2", ?_assert(string:str(RebarOut, 
+              {"Supppressed unused export 2", ?_assert(string:str(RebarOut,
                 "myapp_behaviour2:behaviour_info/1 is unused export") =:= 0)},
-              {"Supppressed unused export 3", ?_assert(string:str(RebarOut, 
+              {"Supppressed unused export 3", ?_assert(string:str(RebarOut,
                 "myapp_mymod:other2/1 is unused export") =:= 0)},
-              {"Supppressed unused export 4", ?_assert(string:str(RebarOut, 
+              {"Supppressed unused export 4", ?_assert(string:str(RebarOut,
                 "myapp_othermod:somefunc/0 is unused export") =:= 0)},
-              {"Suppressed behaviour export 1", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 1", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh1_a/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 2", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 2", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh1_b/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 3", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 3", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh2_a/1 is unused export") =:= 0)},
-              {"Suppressed behaviour export 4", ?_assert(string:str(RebarOut, 
+              {"Suppressed behaviour export 4", ?_assert(string:str(RebarOut,
                 "myapp_mymod:bh2_b/1 is unused export") =:= 0)}
             ]
 
@@ -116,7 +114,7 @@ xref_ignore_test_() ->
          "bh2_a(A) -> localfunc1(bh2_a, A).\n",
          "bh2_b(A) -> localfunc1(bh2_b, A).\n",
          "other1(A) -> localfunc1(other1, A).\n", % regular exported functions
-         "other2(A) -> localfunc1(other2, A).\n", 
+         "other2(A) -> localfunc1(other2, A).\n",
          "localfunc1(A, B) -> {A, B}.\n",       % used local
          "localfunc2() -> ok.\n",               % unused local
          "fdeprecated() -> ok.\n"              % deprecated function
@@ -155,7 +153,7 @@ setup_environment() ->
 prepare_project() ->
     setup_environment(),
     rebar("create-app appid=myapp"),
-    ok = file:make_dir("ebin").  
+    ok = file:make_dir("ebin").
 
 setup_project(ignore_xref) ->
     prepare_project(),
@@ -195,9 +193,6 @@ prepare_rebar_script() ->
             {ok, _} = file:copy(?REBAR_SCRIPT ++ ".cmd",
                                 ?TMP_DIR ++ "rebar.cmd")
     end.
-
-rebar() ->
-    rebar([]).
 
 rebar(Args) when is_list(Args) ->
     Out = os:cmd(filename:nativename("./rebar") ++ " " ++ Args),
