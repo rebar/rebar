@@ -78,12 +78,18 @@ clean(Config, _AppFile) ->
 %% ============================================================================
 
 info(help, compile) ->
+    info_help("Build Neotoma (*.peg) sources.~n");
+info(help, clean) ->
+    info_help("Delete *.peg build results").
+
+info_help(Description) ->
     ?CONSOLE(
-       "Build Neotoma (*.peg) sources.~n"
+       "~s.~n"
        "~n"
        "Valid rebar.config options:~n"
        "  ~p~n",
        [
+        Description,
         {neotoma_opts, [{doc_root, "src"},
                         {out_dir, "src"},
                         {source_ext, ".peg"},
