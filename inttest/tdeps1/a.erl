@@ -1,6 +1,6 @@
 -module(a).
 
--compile(export_all).
+-export([hello/0]).
 
 -include_lib("b/include/b.hrl").
 

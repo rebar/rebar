@@ -2,7 +2,7 @@
 %% ex: ts=4 sw=4 et
 -module(ct_make_fails_rt).
 
--compile(export_all).
+-export([files/0, run/1]).
 
 
 files() ->

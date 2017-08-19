@@ -1,6 +1,6 @@
 -module(app_src_script_2).
 
--compile(export_all).
+-export([test/0]).
 
 test() ->
     ok.

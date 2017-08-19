@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(test_SUITE).
 
--compile(export_all).
+-export([all/0, simple_test/1, app_config_file_test/1, check_path/1]).
 
 -include_lib("ct.hrl").
 

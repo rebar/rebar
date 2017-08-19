@@ -2,7 +2,10 @@
 %% ex: ts=4 sw=4 et
 -module(inttest_utils).
 
--compile(export_all).
+-export([ rebar_setup/1
+        , rebar_setup/2
+        , rebar_setup/0
+        ]).
 
 rebar_setup({win32, nt}, Dir) ->
     [{copy, filename:join(Dir, "rebar.cmd"), "rebar.cmd"}];

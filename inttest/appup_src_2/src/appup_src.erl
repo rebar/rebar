@@ -1,6 +1,6 @@
 -module(appup_src).
 
--compile(export_all).
+-export([test/0]).
 
 test() ->
     ok.

@@ -1,7 +1,7 @@
 %% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 -module(tplugins_rt).
--compile(export_all).
+-export([setup/1, files/0, run/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 

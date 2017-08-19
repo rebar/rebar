@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(appup_src_rt).
 
--compile(export_all).
+-export([setup/1, files/0, run/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 

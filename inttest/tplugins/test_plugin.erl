@@ -1,5 +1,6 @@
 -module(test_plugin).
--compile(export_all).
+
+-export([fwibble/2]).
 
 fwibble(Config, _) ->
     Pwd = rebar_utils:get_cwd(),

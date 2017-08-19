@@ -1,6 +1,6 @@
 -module(custom_config).
 
--compile(export_all).
+-export([test/0]).
 
 test() ->
     ok.

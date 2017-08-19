@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(neotoma_src_rt).
 
--compile(export_all).
+-export([files/0, run/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("deps/retest/include/retest.hrl").

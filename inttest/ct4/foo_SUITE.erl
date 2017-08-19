@@ -2,7 +2,7 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--compile(export_all).
+-export([all/0, simple/1]).
 
 all() -> [simple].
 
