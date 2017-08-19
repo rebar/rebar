@@ -3,7 +3,20 @@
 -module({{testmod}}_SUITE).
 -include_lib("common_test/include/ct.hrl").
 
--compile(export_all).
+-export([ suite/0
+        , groups/0
+        , all/0
+        , init_per_suite/1
+        , end_per_suite/1
+        , init_per_group/2
+        , end_per_group/2
+        , init_per_testcase/2
+        , end_per_testcase/2
+        ]).
+
+-export([ test_{{testmod}}/0
+        , test_{{testmod}}/1
+        ]).
 
 %%--------------------------------------------------------------------
 %% Function: suite() -> Info
@@ -57,12 +70,16 @@ groups() -> [].
 %%      NB: By default, we export all 1-arity user defined functions
 %%--------------------------------------------------------------------
 all() ->
-    [ {exports, Functions} | _ ] = ?MODULE:module_info(),
+    { exports, Functions } = lists:keyfind(exports, 1, ?MODULE:module_info()),
     [ FName || {FName, _} <- lists:filter(
                                fun ({module_info,_}) -> false;
                                    ({all,_}) -> false;
                                    ({init_per_suite,1}) -> false;
                                    ({end_per_suite,1}) -> false;
+                                   ({init_per_group,2}) -> false;
+                                   ({end_per_group,2}) -> false;
+                                   ({init_per_testcase,2}) -> false;
+                                   ({end_per_testcase,2}) -> false;
                                    ({_,1}) -> true;
                                    ({_,_}) -> false
                                end, Functions)].
@@ -108,7 +125,7 @@ end_per_suite(_Config) ->
 %%
 %% Description: Initialization before each test case group.
 %%--------------------------------------------------------------------
-init_per_group(_group, Config) ->
+init_per_group(_GroupName, Config) ->
     Config.
 
 %%--------------------------------------------------------------------
@@ -122,7 +139,7 @@ init_per_group(_group, Config) ->
 %%
 %% Description: Cleanup after each test case group.
 %%--------------------------------------------------------------------
-end_per_group(_group, Config) ->
+end_per_group(_GroupName, Config) ->
     Config.
 
 %%--------------------------------------------------------------------
@@ -141,7 +158,7 @@ end_per_group(_group, Config) ->
 %% Note: This function is free to add any key/value pairs to the Config
 %% variable, but should NOT alter/remove any existing entries.
 %%--------------------------------------------------------------------
-init_per_testcase(TestCase, Config) ->
+init_per_testcase(_TestCase, Config) ->
     Config.
 
 %%--------------------------------------------------------------------
@@ -157,7 +174,7 @@ init_per_testcase(TestCase, Config) ->
 %%
 %% Description: Cleanup after each test case.
 %%--------------------------------------------------------------------
-end_per_testcase(TestCase, Config) ->
+end_per_testcase(_TestCase, Config) ->
     Config.
 
 test_{{testmod}}() ->
