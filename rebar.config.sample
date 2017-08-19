@@ -92,13 +92,16 @@
 %% == Proto compiler ==
 {proto_opts, [
               {compiler, protobuffs},
-              {src_dirs, ["src"]}
+              {src_dirs, ["src"],
+			  {src_out_dir, "_build"}
              ]}.
 %% Available compilers for protocol buffer files (*.proto):
 %%   protobuffs  (default)
 %%   gpb
 %% Optional src_dirs which is a list of directories where
-%% to look for .proto files, default is src
+%% to look for .proto files, default is src.
+%% Optional src_out_dir points to where the .erl code
+%% shall be generated (protobuffs only).
 
 %% Options for the gpb protocol buffer compiler,
 %% if selected by the proto_compiler option

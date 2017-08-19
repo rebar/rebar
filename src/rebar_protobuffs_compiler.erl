@@ -47,9 +47,10 @@ proto_compile(Config, _AppFile, ProtoFiles) ->
     %% since we have.proto files that need building
     case protobuffs_is_present() of
         true ->
-            %% Build a list of output files - { Proto, Beam, Hrl }
-            Targets = [{Proto, beam_file(Proto), hrl_file(Proto)} ||
-                          Proto <- ProtoFiles],
+            %% Build a list of output files - { Proto, Beam, Hrl, Erl }
+            Targets = [{Proto,
+                        beam_file(Proto), hrl_file(Proto), erl_file(Proto)} ||
+                       Proto <- ProtoFiles],
 
             %% Compile each proto file
             compile_each(Config, Targets);
@@ -88,6 +89,9 @@ protobuffs_is_present() ->
 beam_file(Proto) ->
     filename:basename(Proto, ".proto") ++ "_pb.beam".
 
+erl_file(Proto) ->
+    filename:basename(Proto, ".proto") ++ "_pb.erl".
+
 hrl_file(Proto) ->
     filename:basename(Proto, ".proto") ++ "_pb.hrl".
 
@@ -103,7 +107,8 @@ needs_compile(Proto, Beam) ->
 
 compile_each(_, []) ->
     ok;
-compile_each(Config, [{Proto, Beam, Hrl} | Rest]) ->
+compile_each(Config, [{Proto, Beam, Hrl, Erl} | Rest]) ->
+    ProtoOpts = rebar_config:get_local(Config, proto_opts, []),
     case needs_compile(Proto, Beam) of
         true ->
             ?CONSOLE("Compiling ~s\n", [Proto]),
@@ -111,6 +116,12 @@ compile_each(Config, [{Proto, Beam, Hrl} | Rest]) ->
             case protobuffs_compile:scan_file(Proto,
                                               [{compile_flags,ErlOpts}]) of
                 ok ->
+                    case proplists:get_value(src_out_dir, ProtoOpts) of
+                        SrcOutDir ->
+                            ok = protobuffs_compile:generate_source(Proto, [{compile_flags,ErlOpts}]),
+                            ok = file:make_dir(SrcOutDir),
+                            ok = rebar_file_utils:mv(Erl, SrcOutDir)
+                    end,
                     %% Compilation worked, but we need to move the
                     %% beam and .hrl file into the ebin/ and include/
                     %% directories respectively
