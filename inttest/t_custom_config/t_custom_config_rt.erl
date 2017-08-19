@@ -2,7 +2,7 @@
 %% ex: ts=4 sw=4 et
 -module(t_custom_config_rt).
 
--compile(export_all).
+-export([setup/1, files/0, run/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 

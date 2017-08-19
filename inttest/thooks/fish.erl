@@ -1,5 +1,5 @@
 -module(fish).
 
--compile(export_all).
+-export([fish/0]).
 
 fish() -> fish.

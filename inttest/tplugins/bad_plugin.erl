@@ -1,5 +1,6 @@
 -module(bad_plugin).
--compile(export_all).
+
+-export([fwibble/2]).
 
 %% this plugin contains numerous DELIBERATE syntax errors
 

@@ -2,8 +2,7 @@
 %% ex: ts=4 sw=4 et
 -module(ct_test_fails_rt).
 
--compile(export_all).
-
+-export([files/0, run/1]).
 
 files() ->
     [{create, "ebin/a1.app", app(a1)},
@@ -14,11 +13,11 @@ files() ->
      {copy, "test_SUITE.erl", "itest/test_SUITE.erl"},
      {copy, "test2_SUITE.erl", "itest/test2_SUITE.erl"}].
 
-run(Dir) ->
+run(_Dir) ->
     ok = case catch retest:sh("./rebar compile ct -v 3") of
-                {error, {stopped, _}} -> ok;
-                _ -> expected_to_fail
-              end.
+             {error, {stopped, _}} -> ok;
+             _ -> expected_to_fail
+         end.
 
 %%
 %% Generate the contents of a simple .app file

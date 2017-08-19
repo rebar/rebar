@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(ct3_rt).
 
--compile(export_all).
+-export([setup/1, files/0, run/1]).
 
 setup([Target]) ->
   retest_utils:load_module(filename:join(Target, "inttest_utils.erl")),
