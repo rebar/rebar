@@ -103,7 +103,7 @@ REMSH_NAME=`echo $NAME_ARG | awk '{print $2}'`
 
 # Test if REMSH_NAME contains a @ and set REMSH_HOSTNAME_PART 
 # and REMSH_NAME_PART according REMSH_TYPE
-MAYBE_FQDN_HOSTNAME=`hostname`
+MAYBE_FQDN_HOSTNAME=`hostname -f`
 HOSTNAME=`echo $MAYBE_FQDN_HOSTNAME | awk -F. '{print $1}'`
 
 REMSH_HOSTNAME_PART="$MAYBE_FQDN_HOSTNAME"
