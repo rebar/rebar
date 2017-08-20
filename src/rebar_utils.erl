@@ -296,7 +296,7 @@ vcs_vsn(Config, Vsn, Dir) ->
             VsnString = vcs_vsn_1(Vsn, Dir),
             Cache1 = dict:store(Key, VsnString, Cache),
             Config1 = rebar_config:set_xconf(Config, vsn_cache, Cache1),
-            save_vsn_cache(Config1),
+            _ = save_vsn_cache(Config1),
             {Config1, VsnString};
         {ok, VsnString} ->
             {Config, VsnString}
