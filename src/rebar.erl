@@ -205,6 +205,12 @@ profile(_Config, _Commands, Profiler) ->
     ?ABORT("Unsupported profiler: ~s~n", [Profiler]).
 
 run_aux(BaseConfig, Commands) ->
+    %% Make sure crypto is running
+    case crypto:start() of
+        ok -> ok;
+        {error,{already_started,crypto}} -> ok
+    end,
+
     %% Make sure memoization server is running
     case rmemo:start() of
         {ok, _} -> ok;

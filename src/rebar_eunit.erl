@@ -279,7 +279,7 @@ randomize_suites(Config, Modules) ->
         undefined ->
             Modules;
         "true" ->
-            Seed = rebar_rnd:uniform(65535),
+            Seed = crypto:rand_uniform(1, 65535),
             randomize_suites1(Modules, Seed);
         String ->
             try list_to_integer(String) of
