@@ -11,7 +11,8 @@ otp_release:
   - 17.0
   - 18.0
   - 19.1
-  - 20.0.4
+  - 20.0.5
+  - 20.1
 env: MAKE_TARGET=ci
 before_script:
   - hostname -f
@@ -22,7 +23,7 @@ after_script:
   - find .rebar
 matrix:
   include:
-    - otp_release: 20.0.4
+    - otp_release: 20.1
       env: MAKE_TARGET=ci-dialyze
 script: make $MAKE_TARGET
 cache:
