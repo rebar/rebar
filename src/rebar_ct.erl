@@ -193,7 +193,7 @@ check_log(Config,RawLogFilename,Fun) ->
             ?FAIL;
 
         true ->
-            Fun(Msg)
+            Fun(string:join(Msg, "\n"))
     end.
 
 
