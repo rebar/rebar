@@ -25,6 +25,9 @@ matrix:
   include:
     - otp_release: 20.1.5
       env: MAKE_TARGET=ci-dialyze
+  allow_failures:
+    - otp_release: 20.1.5
+      env: MAKE_TARGET=ci-dialyze
 script: make $MAKE_TARGET
 cache:
   directories:
