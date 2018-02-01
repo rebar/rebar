@@ -11,9 +11,27 @@ otp_release:
   - 17.0
   - 18.0
   - 19.1
-  - 20.0.4
+  - 20.0.5
+  - 20.1.5
+env: MAKE_TARGET=ci
 before_script:
   - hostname -f
   - cc -v
   - ld -v
-script: "make travis"
+  - find .rebar
+after_script:
+  - find .rebar
+matrix:
+  include:
+    - otp_release: 20.1.5
+      env: MAKE_TARGET=ci-dialyze
+  allow_failures:
+    - otp_release: 20.1.5
+      env: MAKE_TARGET=ci-dialyze
+script: make $MAKE_TARGET
+cache:
+  directories:
+    - .rebar
+before_cache:
+  - rm -fv .rebar/erlcinfo
+  - rm -fv $HOME/.cache/.rebar/erlcinfo

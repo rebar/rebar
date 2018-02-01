@@ -22,11 +22,11 @@ check: debug xref dialyzer deps test
 xref:
 	@./rebar xref
 
-build_plt:
-	@./rebar build-plt
+maybe_build_plt:
+	@./rebar -vv check-plt || ./rebar -vv build-plt
 
-dialyzer:
-	@./rebar dialyze
+dialyze: maybe_build_plt
+	@./rebar -vv dialyze
 
 binary: VSN = $(shell ./rebar -V)
 binary: clean all
@@ -45,4 +45,6 @@ test_eunit: all
 test_inttest: all deps
 	@$(RETEST) -l $(LOG_LEVEL) $(RT_TARGETS)
 
-travis: clean debug xref clean all deps test
+ci: clean debug xref clean all deps test
+
+ci-dialyze: clean debug dialyze
