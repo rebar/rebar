@@ -363,7 +363,7 @@ delayed_halt(Code) ->
             halt(Code);
         false ->
             case os:type() of
-                {win32, nt} ->
+                {win32, _} ->
                     timer:sleep(100),
                     halt(Code);
                 _ ->
@@ -521,7 +521,7 @@ get_experimental_3(Get, Config, Opt, Default) ->
 %% command doesn't use any other shell magic.
 patch_on_windows(Cmd, Env) ->
     case os:type() of
-        {win32,nt} ->
+        {win32, _} ->
             Cmd1 = "cmd /q /c "
                 ++ lists:foldl(fun({Key, Value}, Acc) ->
                                        expand_env_variable(Acc, Key, Value)

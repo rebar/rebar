@@ -425,7 +425,7 @@ port_opt(Config, {env, Env}) ->
 port_opt(_Config, Opt) ->
     Opt.
 
-maybe_switch_extension({win32, nt}, Target) ->
+maybe_switch_extension({win32, _}, Target) ->
     switch_to_dll_or_exe(Target);
 maybe_switch_extension(_OsType, Target) ->
     Target.
