@@ -663,20 +663,15 @@ update_source1(AppDir, {git, Url}) ->
     update_source1(AppDir, {git, Url, {branch, "HEAD"}});
 update_source1(AppDir, {git, Url, ""}) ->
     update_source1(AppDir, {git, Url, {branch, "HEAD"}});
-update_source1(AppDir, {git, _Url, {branch, Branch}}) ->
+update_source1(AppDir, {git, Url, {branch, Branch}}) ->
     ShOpts = [{cd, AppDir}],
-    rebar_utils:sh("git fetch origin", ShOpts),
-    rebar_utils:sh(?FMT("git checkout -q ~s", [Branch]), ShOpts),
+    git_checkout(AppDir, Url, Branch),
     rebar_utils:sh(
       ?FMT("git pull --ff-only --no-rebase -q origin ~s", [Branch]),ShOpts);
-update_source1(AppDir, {git, _Url, {tag, Tag}}) ->
-    ShOpts = [{cd, AppDir}],
-    rebar_utils:sh("git fetch origin", ShOpts),
-    rebar_utils:sh(?FMT("git checkout -q ~s", [Tag]), ShOpts);
-update_source1(AppDir, {git, _Url, Refspec}) ->
-    ShOpts = [{cd, AppDir}],
-    rebar_utils:sh("git fetch origin", ShOpts),
-    rebar_utils:sh(?FMT("git checkout -q ~s", [Refspec]), ShOpts);
+update_source1(AppDir, {git, Url, {tag, Tag}}) ->
+    git_checkout(AppDir, Url, Tag);
+update_source1(AppDir, {git, Url, Refspec}) ->
+    git_checkout(AppDir, Url, Refspec);
 update_source1(AppDir, {svn, _Url, Rev}) ->
     rebar_utils:sh(?FMT("svn up -r ~s", [Rev]), [{cd, AppDir}]);
 update_source1(AppDir, {hg, _Url, Rev}) ->
@@ -691,6 +686,26 @@ update_source1(AppDir, {fossil, _Url, Version}) ->
     ok = file:set_cwd(AppDir),
     rebar_utils:sh("fossil pull", [{cd, AppDir}]),
     rebar_utils:sh(?FMT("fossil update ~s", [Version]), []).
+
+git_checkout(AppDir, Url, GitReference) ->
+    ShOpts = [{cd, AppDir}],
+    Url1 = maybe_fix_relative_path_local_remote(Url),
+    rebar_utils:sh(?FMT("git remote set-url origin ~p", [Url1]), ShOpts),
+    rebar_utils:sh("git fetch origin", ShOpts),
+    rebar_utils:sh(?FMT("git checkout -q ~s", [GitReference]), ShOpts).
+
+%% If the dependency was cloned from a local repository, using a relative path,
+%% then that path is relative to the dependencies' directory (i.e. "/deps")
+%% because of how we clone (see `download_source/2' below); whereas the
+%% git commands run by update-deps run from each dependency's directory;
+%% which means we need to go up one more level for the path of the remote repo
+%% Note that a relative path has to start with ".." in this case as the remote
+%% repo can't be inside /deps
+%% Finally, note that this issue could have been fixed by using the same cwd
+%% for both clone and update commands, but that would break existing
+%% rebar.config files using relative paths
+maybe_fix_relative_path_local_remote(".." ++ Rest) -> "../.." ++ Rest;
+maybe_fix_relative_path_local_remote(Else) -> Else.
 
 %% Recursively update deps, this is not done via rebar's usual dep traversal as
 %% that is the wrong order (tips are updated before branches). Instead we do a
